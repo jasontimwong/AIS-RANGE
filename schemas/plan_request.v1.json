@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecdis-planner.io/schemas/plan_request.v1.json",
+  "title": "PlanRequest",
+  "description": "ECDIS Route Planning Request v1.0.0",
+  "type": "object",
+  "required": ["start", "goal", "vessel_draft", "safety_depth"],
+  "properties": {
+    "start": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "lon": {"type": "number", "minimum": -180, "maximum": 180}
+      }
+    },
+    "goal": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "lon": {"type": "number", "minimum": -180, "maximum": 180}
+      }
+    },
+    "vessel_draft": {"type": "number", "minimum": 0, "maximum": 100},
+    "safety_depth": {"type": "number", "minimum": 0, "maximum": 1000},
+    "under_keel_clearance": {"type": "number", "minimum": 0, "default": 3.0},
+    "vessel_speed": {"type": "number", "minimum": 0, "maximum": 50, "default": 12.0},
+    "enc_file": {"type": "string", "format": "path"}
+  },
+  "additionalProperties": false
+}

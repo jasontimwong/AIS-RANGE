@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<s421:Dataset xmlns:s421="http://www.iho.int/S421/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.iho.int/S421/1.0 S421.xsd">
+  <s421:DatasetMetadata>
+    <datasetID>S421_20250810194113</datasetID>
+    <datasetName>ECDIS Route Plan</datasetName>
+    <datasetProducer>ECDIS-PLANNER</datasetProducer>
+    <datasetProductionDate>2025-08-10T19:41:13.037390</datasetProductionDate>
+    <schemaVersion>1.0.0</schemaVersion>
+  </s421:DatasetMetadata>
+  <s421:Route>
+    <routeID>route_20250810194113</routeID>
+    <routeInfo>
+      <routeName>Test Route</routeName>
+      <routeAuthor>Test System</routeAuthor>
+      <routeStatus>planned</routeStatus>
+      <routeValidation>
+        <validated>true</validated>
+        <validationTime>2025-08-10T19:41:13.037396</validationTime>
+        <validationAuthority>ECDIS-PLANNER</validationAuthority>
+      </routeValidation>
+    </routeInfo>
+    <s421:waypoints>
+      <waypoint>
+        <waypointID>WP001</waypointID>
+        <waypointName>Waypoint 1</waypointName>
+        <position>
+          <latitude>37.800000</latitude>
+          <longitude>-122.500000</longitude>
+        </position>
+        <plannedSpeed>10.0</plannedSpeed>
+        <speedUnit>m/s</speedUnit>
+        <plannedCourse>45.0</plannedCourse>
+        <crossTrackDistancePort>185.2</crossTrackDistancePort>
+        <crossTrackDistanceStarboard>185.2</crossTrackDistanceStarboard>
+      </waypoint>
+      <waypoint>
+        <waypointID>WP002</waypointID>
+        <waypointName>Waypoint 2</waypointName>
+        <position>
+          <latitude>37.820000</latitude>
+          <longitude>-122.450000</longitude>
+        </position>
+        <plannedSpeed>12.0</plannedSpeed>
+        <speedUnit>m/s</speedUnit>
+        <plannedCourse>50.0</plannedCourse>
+        <turnRadius>100.0</turnRadius>
+        <crossTrackDistancePort>185.2</crossTrackDistancePort>
+        <crossTrackDistanceStarboard>185.2</crossTrackDistanceStarboard>
+      </waypoint>
+      <waypoint>
+        <waypointID>WP003</waypointID>
+        <waypointName>Waypoint 3</waypointName>
+        <position>
+          <latitude>37.850000</latitude>
+          <longitude>-122.400000</longitude>
+        </position>
+        <plannedSpeed>10.0</plannedSpeed>
+        <speedUnit>m/s</speedUnit>
+        <plannedCourse>45.0</plannedCourse>
+        <turnRadius>100.0</turnRadius>
+        <crossTrackDistancePort>185.2</crossTrackDistancePort>
+        <crossTrackDistanceStarboard>185.2</crossTrackDistanceStarboard>
+      </waypoint>
+    </s421:waypoints>
+    <s421:routeLegs>
+      <routeLeg>
+        <legID>LEG001</legID>
+        <startWaypointID>WP001</startWaypointID>
+        <endWaypointID>WP002</endWaypointID>
+        <legGeometryType>Loxodrome</legGeometryType>
+        <safetyCorridor>370.4</safetyCorridor>
+      </routeLeg>
+      <routeLeg>
+        <legID>LEG002</legID>
+        <startWaypointID>WP002</startWaypointID>
+        <endWaypointID>WP003</endWaypointID>
+        <legGeometryType>Loxodrome</legGeometryType>
+        <safetyCorridor>370.4</safetyCorridor>
+      </routeLeg>
+    </s421:routeLegs>
+    <extensions>
+      <plannerExtension>
+        <plannerVersion>1.0.0</plannerVersion>
+        <algorithmType>HybridAStar</algorithmType>
+        <totalCost>150.00</totalCost>
+      </plannerExtension>
+      <optimizationExtension>
+        <optimizationCriteria>MinimumDistance</optimizationCriteria>
+        <safetyMargin>1.5</safetyMargin>
+      </optimizationExtension>
+    </extensions>
+  </s421:Route>
+</s421:Dataset>

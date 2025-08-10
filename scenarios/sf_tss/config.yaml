@@ -1,0 +1,33 @@
+# San Francisco TSS Scenario Configuration
+scenario:
+  name: "SF Bay Approach via Western TSS"
+  description: "Route planning through SF Traffic Separation Scheme"
+  
+waypoints:
+  start:
+    lat: 37.70  # West of Farallons
+    lon: -123.10
+    name: "Pilot Station"
+  
+  goal:
+    lat: 37.80  # SF Bay entrance
+    lon: -122.55
+    name: "Golden Gate"
+  
+vessel:
+  draft: 8.0  # meters
+  speed: 12.0  # knots
+  length: 180.0  # meters
+  beam: 25.0  # meters
+  
+safety:
+  safety_depth: 15.0  # meters
+  under_keel_clearance: 3.0  # meters
+  xtd_limit: 0.1  # nautical miles
+  
+validation:
+  checks:
+    - safety
+    - tss
+    - geometry
+    - speed

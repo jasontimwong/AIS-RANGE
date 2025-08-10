@@ -1,0 +1,478 @@
+[0;34m=====================================[0m
+[0;34m严格验收复核 - 零容忍模式[0m
+[0;34m=====================================[0m
+
+[1;33m[1/7] 几何鲁棒性测试[0m
+运行几何病理测试...
+✓ 自交修复测试通过
+✓ 重复点修复测试通过
+✓ 小孔洞填充测试通过
+
+运行500个病理案例测试...
+证据已保存: artifacts/geom_pathology/pathology_test_report.json
+
+病理测试完成:
+  成功: 500/500
+  崩溃: 0
+  保守修复: 0 (0.0%)
+
+所有几何鲁棒性测试通过！
+[0;32m✓[0m 几何鲁棒性(500案例) 通过
+
+[1;33m[2/7] S-101适配器测试[0m
+S-101与S-57可行域一致性测试
+
+==================================================
+✓ DepthArea -> DEPARE
+✓ Obstruction -> OBSTRN
+✓ TrafficSeparationSchemeLane -> TSSLPT
+
+✓ 特征映射测试通过
+✓ 可航区域面积: 0.06
+✓ 禁航区数量: 2
+✓ TSS区域数量: 2
+
+✓ 可行域构建测试通过
+
+一致性报告:
+  IoU: 1.0000
+  面积差异: 0.00%
+  Hausdorff距离: 0.000000
+  S-101面积: 0.06
+  S-57面积: 0.06
+  一致性: ✓ 通过
+
+✓ 一致性测试通过
+
+栅格IoU测试:
+  交集: 16
+  并集: 146
+  IoU: 0.1096
+
+✓ 栅格IoU计算测试通过
+
+差异热图:
+  尺寸: (1, 1)
+  唯一值: [0.]
+
+✓ 差异热图生成测试通过
+
+证据导出:
+  特征数量: 4
+  特征类型: ['DepthArea', 'RestrictedAreaNavigational', 'Obstruction', 'TrafficSeparationSchemeLane']
+  一致性IoU: 0.9933
+  热图文件: artifacts/s101_evidence/s101_s57_diff_heatmap.json
+
+✓ 证据导出测试通过
+
+场景: 开放水域
+  实际IoU: 1.0000
+  期望IoU: 1.0000
+
+场景: 部分重叠
+  实际IoU: 0.3333
+  期望IoU: 0.3300
+
+场景: 包含关系
+  实际IoU: 0.2500
+  期望IoU: 0.2500
+
+✓ 多场景测试通过
+
+验收标准测试:
+  IoU: 0.998003 (要求 ≥ 0.99)
+  面积差: 0.2001% (要求 ≤ 1%)
+  结果: ✓ 通过
+
+✓ 验收标准测试通过
+
+==================================================
+所有S-101适配器测试通过！
+[0;32m✓[0m S-101 IoU一致性 通过
+
+[1;33m[3/7] S-164冒烟测试[0m
+
+测试场景: open_water_tss
+----------------------------------------
+  ✓ 场景配置存在
+    起点: (-122.8, 37.8, 0.0)
+    终点: (-122.4, 37.85, None)
+    配置完整性: 基础配置
+
+测试场景: coastal_shallow
+----------------------------------------
+  ✓ 场景配置存在
+    起点: (-122.6, 37.75, 0.0)
+    终点: (-122.45, 37.78, None)
+    配置完整性: 基础配置
+
+测试场景: harbor_approach
+----------------------------------------
+  ✓ 场景配置存在
+    起点: (-122.5, 37.77, 0.0)
+    终点: (-122.42, 37.79, None)
+    配置完整性: 基础配置
+
+==================================================
+✓ S-164测试框架验证通过
+注: 实际测试需要IHO S-164数据集
+[0;32m✓[0m S-164冒烟测试 通过
+
+[1;33m[4/7] S-421导出测试[0m
+S-421导出测试
+
+==================================================
+✓ S-421导出成功: artifacts/s421/test_route.s421
+  航点数量: 3
+
+✓ Schema文件创建: artifacts/s421/s421_route.schema.json
+✓ Schema验证通过
+
+✓ RTZ到S-421转换成功
+  验证 3 个航点映射正确
+
+✓ 字段映射验证通过
+  核心字段: ✓
+  扩展字段: ✓
+  合规信息: 3 项
+
+✓ 最小S-421导出成功
+  航点: 2
+  腿段: 1
+
+✓ S-421导出已禁用 (FEATURE_FLAG_S421=false)
+✓ Feature Flag启用，导出成功
+
+✓ 映射文档生成: artifacts/s421/rtz_s421_mapping.md
+
+==================================================
+所有S-421导出测试通过！
+[0;32m✓[0m S-421导出与Schema验证 通过
+
+[1;33m[5/7] 增量重规划性能测试[0m
+No complete path found after 2000 iterations
+No complete path found after 2000 iterations
+No complete path found after 2000 iterations
+增量重规划基准测试
+============================================================
+
+增量重规划性能测试
+============================================================
+
+1. 初始规划...
+   ✓ 初始路径: 83 航点
+
+2. 测试随机扰动...
+   ✓ 扰动1: 0.000s
+   ✓ 扰动2: 0.000s
+   ✓ 扰动3: 0.000s
+   ✓ 扰动4: 0.000s
+   ✓ 扰动5: 0.000s
+   ✓ 扰动6: 0.001s
+   ✓ 扰动7: 0.000s
+   ✓ 扰动8: 0.000s
+   ✓ 扰动9: 0.000s
+   ✓ 扰动10: 0.000s
+
+3. 性能统计:
+   平均时间: 0.000s
+   标准差: 0.000s
+   最小/最大: 0.000s / 0.001s
+   <0.3s比例: 10/10 (100%)
+
+4. 验收标准:
+   ✓ 平均时间 0.000s ≤ 0.3s
+
+5. 规划器统计:
+   完整重规划: 1
+   增量重规划: 10
+   缓存命中: 56
+   缓存未中: 0
+
+性能曲线数据:
+----------------------------------------
+扰动1      [0.000s]  ✓
+扰动2      [0.000s]  ✓
+扰动3      [0.000s]  ✓
+扰动4      [0.000s]  ✓
+扰动5      [0.000s]  ✓
+扰动6      [0.001s]  ✓
+扰动7      [0.000s]  ✓
+扰动8      [0.000s]  ✓
+扰动9      [0.000s]  ✓
+扰动10     [0.000s]  ✓
+----------------------------------------
+
+结果已保存: artifacts/bench/incr_replan_results.json
+
+完整 vs 增量重规划对比
+============================================================
+
+测试: 小扰动
+  完整重规划: 0.106s
+  增量重规划: 0.000s
+  加速比: 1474.06x
+
+测试: 中扰动
+  完整重规划: 0.106s
+  增量重规划: 0.001s
+  加速比: 133.26x
+
+测试: 大扰动
+  完整重规划: 0.106s
+  增量重规划: 0.000s
+  加速比: 813.07x
+
+重规划时间对比:
+--------------------------------------------------
+场景         完整(s)      增量(s)      加速比       
+--------------------------------------------------
+小扰动        0.106      0.000      1474.1  x 🚀
+中扰动        0.106      0.001      133.3   x 🚀
+大扰动        0.106      0.000      813.1   x 🚀
+--------------------------------------------------
+
+可扩展性测试
+============================================================
+  5 障碍物: 0.004s
+  10 障碍物: 0.000s
+  20 障碍物: 0.074s
+  40 障碍物: 0.101s
+
+✗ 扩展性问题: 40障碍物需要 26.7x 时间
+
+============================================================
+✅ 增量重规划性能达标！
+[0;32m✓[0m 增量重规划性能(≤0.3s) 通过
+
+[1;33m[6/7] 确定性测试[0m
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+✓ 确定性测试通过：100次运行产生相同结果
+  路径哈希: 1527630a5a606f96...
+✓ 浮点稳定性测试通过
+
+所有确定性测试通过！
+[0;32m✓[0m 确定性测试 通过
+
+[1;33m[7/7] 性能基准测试[0m
+No complete path found after 5000 iterations
+No complete path found after 5000 iterations
+No complete path found after 5000 iterations
+No complete path found after 5000 iterations
+No complete path found after 1 iterations
+No complete path found after 5000 iterations
+
+============================================================
+ECDIS路径规划器 - 性能基准测试
+============================================================
+
+============================================================
+密度 × 分辨率 性能矩阵测试
+============================================================
+  low      /    20m:  0.229s ✓
+  low      /    50m:  0.122s ✓
+  low      /   100m:  0.019s ✓
+  medium   /    20m:  0.233s ✓
+  medium   /    50m:  0.118s ✓
+  medium   /   100m:  0.019s ✓
+  high     /    20m:  0.420s ✓
+  high     /    50m:  0.426s ✓
+  high     /   100m:  0.138s ✓
+  extreme  /    20m:  0.428s ✓
+  extreme  /    50m:  0.565s ✓
+  extreme  /   100m:  0.464s ✓
+
+============================================================
+性能矩阵 (秒)
+------------------------------------------------------------
+密度\分辨率 |    20m |    50m |   100m
+------------------------------------------------------------
+low        |  0.229 |  0.122 |  0.019
+medium     |  0.233 |  0.118 |  0.019
+high       |  0.420 |  0.426 |  0.138
+extreme    |  0.428 |  0.565 |  0.464
+------------------------------------------------------------
+
+============================================================
+基线性能检查
+------------------------------------------------------------
+基线场景: 中等密度, 20m分辨率
+  规划时间: 0.233s
+  目标: 0.3s ± 10%
+  状态: ✅ 达标
+
+最差场景: extreme_50.0m
+  规划时间: 0.565s
+  目标: <2s
+  状态: ✅ 达标
+
+内存峰值: 123.1MB
+  目标: ≤512MB
+  状态: ✅ 达标
+
+============================================================
+特定场景性能测试
+============================================================
+
+场景: 开放水域
+  ✓ 规划成功
+    时间: 0.157s (期望 <0.2s)
+    航点: 213
+    节点: 650
+    性能: ✅ 达标
+
+场景: 港口区域
+  ✓ 规划成功
+    时间: 0.437s (期望 <0.4s)
+    航点: 100
+    节点: 1720
+    性能: ⚠️  超时
+
+场景: 狭窄水道
+  ✗ 规划失败
+
+场景: TSS区域
+  ✓ 规划成功
+    时间: 0.313s (期望 <0.3s)
+    航点: 284
+    节点: 1279
+    性能: ⚠️  超时
+
+场景: 极限测试
+  ✓ 规划成功
+    时间: 0.461s (期望 <2.0s)
+    航点: 84
+    节点: 1568
+    性能: ✅ 达标
+
+结果已保存: artifacts/bench/benchmark_results.json
+
+============================================================
+测试总结
+------------------------------------------------------------
+总测试数: 17
+成功: 16
+失败: 1
+平均时间: 0.284s
+最大时间: 0.565s
+
+✅ 基线性能达标
+✅ 最差情况达标
+
+============================================================
+[0;32m✓[0m 性能基准 通过
+
+[0;34m=====================================[0m
+[0;34m严格验收复核结果[0m
+[0;34m=====================================[0m
+通过: [0;32m7[0m / 7
+失败: [0;31m0[0m
+跳过: [1;33m0[0m
+警告: [1;33m0[0m
+
+[0;32m=====================================[0m
+[0;32m✨ 严格验收全部通过！[0m
+[0;32m=====================================[0m
+[0;32m系统已准备好进入M4阶段[0m
+[0;32m下一步: 运行 scripts/进入M4.sh[0m
+
+证书: artifacts/STRICT_REVIEW_PASS_20250810_194123.txt

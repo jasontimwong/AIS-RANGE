@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ecdis-planner.io/schemas/validation_report.v1.json",
+  "title": "ValidationReport",
+  "description": "Route Validation Report v1.0.0 with clause references",
+  "type": "object",
+  "required": ["success", "route_id", "is_valid", "summary", "checks"],
+  "properties": {
+    "success": {"type": "boolean"},
+    "route_id": {"type": "string"},
+    "is_valid": {"type": "boolean"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "summary": {
+      "type": "object",
+      "required": ["total_checks", "passed", "failed", "warnings"],
+      "properties": {
+        "total_checks": {"type": "integer", "minimum": 0},
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "warnings": {"type": "integer", "minimum": 0}
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "type"],
+        "properties": {
+          "name": {"type": "string"},
+          "status": {"enum": ["PASS", "FAIL", "WARNING", "SKIP"]},
+          "type": {"enum": ["safety", "geometry", "tss", "speed", "turning"]},
+          "details": {"type": "string"},
+          "evidence": {"type": "object"},
+          "clause_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["standard", "clause", "requirement"],
+              "properties": {
+                "standard": {"type": "string"},
+                "clause": {"type": "string"},
+                "requirement": {"type": "string"},
+                "status": {"enum": ["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE"]}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

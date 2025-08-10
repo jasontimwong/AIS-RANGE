@@ -1,0 +1,102 @@
+{
+  "route_name": "route_20250810_164627",
+  "validation_time": "2025-08-10T16:46:27.429915",
+  "summary": {
+    "total_checks": 8,
+    "passed": 5,
+    "failed": 0,
+    "warnings": 0,
+    "is_valid": true
+  },
+  "checks": {
+    "safety": [
+      {
+        "name": "No-Go Area Avoidance",
+        "status": "pass",
+        "message": "Route avoids all no-go areas",
+        "severity": "critical",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      },
+      {
+        "name": "Safety Contour",
+        "status": "info",
+        "message": "Safety contour check requires depth data",
+        "severity": "medium",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      },
+      {
+        "name": "Under-Keel Clearance",
+        "status": "info",
+        "message": "UKC check requires vessel draft and tidal data",
+        "severity": "high",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      }
+    ],
+    "tss": [],
+    "geometry": [
+      {
+        "name": "XTD Corridor Clearance",
+        "status": "pass",
+        "message": "XTD corridor maintains safe clearance",
+        "severity": "medium",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      },
+      {
+        "name": "Turn Radius Constraints",
+        "status": "pass",
+        "message": "All turns within radius constraints",
+        "severity": "medium",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      },
+      {
+        "name": "Route Continuity",
+        "status": "pass",
+        "message": "Route is continuous with reasonable leg lengths",
+        "severity": "low",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      }
+    ],
+    "speed": [
+      {
+        "name": "Speed Limits",
+        "status": "pass",
+        "message": "All speeds within limits",
+        "severity": "medium",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      },
+      {
+        "name": "Acceleration Limits",
+        "status": "info",
+        "message": "Acceleration check pending implementation",
+        "severity": "low",
+        "evidence": {},
+        "location": null,
+        "waypoint_index": null
+      }
+    ],
+    "cpa": []
+  },
+  "critical_issues": [],
+  "recommendations": [],
+  "metrics": {
+    "route_length_m": 9047.925059105262,
+    "waypoint_count": 92,
+    "min_clearance_m": Infinity,
+    "max_turn_rate": 0.025754482807921697,
+    "compliance_score": 62.5
+  }
+}

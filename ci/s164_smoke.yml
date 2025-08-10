@@ -1,0 +1,94 @@
+name: S-164 Smoke Test
+# S-164 IHO测试数据集冒烟测试
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      enable_s164:
+        description: 'Enable S-164 tests'
+        required: false
+        default: 'false'
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  S164_ENABLED: ${{ github.event.inputs.enable_s164 || 'false' }}
+
+jobs:
+  s164-smoke-test:
+    runs-on: ubuntu-latest
+    if: ${{ env.S164_ENABLED == 'true' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Download S-164 subset
+      run: |
+        # 下载S-164测试数据子集
+        mkdir -p ci/data/s164_subset
+        # 这里应该从IHO下载，现在使用占位符
+        echo "S-164 test data placeholder" > ci/data/s164_subset/README.md
+    
+    - name: Run S-164 Scenario 1 - Open Water TSS
+      id: scenario1
+      run: |
+        echo "Testing Open Water TSS scenario..."
+        python ci/run_s164_test.py \
+          --scenario open_water_tss \
+          --enc-path ci/data/s164_subset/scenario1 \
+          --output artifacts/s164/scenario1
+    
+    - name: Run S-164 Scenario 2 - Coastal Shallow
+      id: scenario2
+      run: |
+        echo "Testing Coastal Shallow scenario..."
+        python ci/run_s164_test.py \
+          --scenario coastal_shallow \
+          --enc-path ci/data/s164_subset/scenario2 \
+          --output artifacts/s164/scenario2
+    
+    - name: Run S-164 Scenario 3 - Harbor Approach
+      id: scenario3
+      run: |
+        echo "Testing Harbor Approach scenario..."
+        python ci/run_s164_test.py \
+          --scenario harbor_approach \
+          --enc-path ci/data/s164_subset/scenario3 \
+          --output artifacts/s164/scenario3
+    
+    - name: Generate Evidence Package
+      if: always()
+      run: |
+        python tools/evidence_pack.py \
+          --output artifacts/s164 \
+          --route-id s164_smoke_${{ github.run_id }}
+    
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: s164-test-results
+        path: |
+          artifacts/s164/
+          测试结果/
+        retention-days: 30
+    
+    - name: Check Compliance
+      run: |
+        python ci/check_s164_compliance.py \
+          --results artifacts/s164 \
+          --threshold 0.95

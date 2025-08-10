@@ -1,0 +1,159 @@
+{
+  "total_cases": 500,
+  "success": 500,
+  "crashes": 0,
+  "conservative_repairs": 0,
+  "conservative_rate": 0.0,
+  "test_cases": [
+    {
+      "case_id": 0,
+      "type": "self_intersection",
+      "input_valid": false,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 1,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 1,
+      "type": "bowtie",
+      "input_valid": false,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 1,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 2,
+      "type": "degenerate",
+      "input_valid": false,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 1,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 3,
+      "type": "duplicate_points",
+      "input_valid": true,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 0,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 4,
+      "type": "small_polygon",
+      "input_valid": true,
+      "output_valid": true,
+      "output_empty": true,
+      "stats": {
+        "degenerate": 0,
+        "self_intersection": 0,
+        "small_polygons": 1,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 5,
+      "type": "small_holes",
+      "input_valid": true,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 0,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 1,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 6,
+      "type": "sliver",
+      "input_valid": true,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 0,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 7,
+      "type": "spikes",
+      "input_valid": false,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 1,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 8,
+      "type": "gaps",
+      "input_valid": true,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 0,
+        "self_intersection": 0,
+        "small_polygons": 0,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    },
+    {
+      "case_id": 9,
+      "type": "random",
+      "input_valid": false,
+      "output_valid": true,
+      "output_empty": false,
+      "stats": {
+        "degenerate": 1,
+        "self_intersection": 0,
+        "small_polygons": 2,
+        "small_holes": 0,
+        "gaps": 0,
+        "conservative_buffer": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,310 @@
+openapi: 3.0.0
+info:
+  title: ECDIS Planner API
+  description: Standards-compliant maritime route planning service
+  version: 1.0.0
+  contact:
+    name: ECDIS Planner Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+paths:
+  /plan:
+    post:
+      summary: Plan a route
+      description: Generate an optimized route between waypoints considering safety constraints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequest'
+      responses:
+        200:
+          description: Route planned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+        400:
+          description: Invalid request or no valid route found
+        500:
+          description: Internal server error
+
+  /validate:
+    post:
+      summary: Validate a route
+      description: Perform comprehensive validation checks on a route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateRequest'
+      responses:
+        200:
+          description: Validation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+        400:
+          description: Invalid request
+        500:
+          description: Internal server error
+
+  /export/rtz:
+    get:
+      summary: Export route as RTZ
+      description: Export the current route in IEC 61174 RTZ format
+      parameters:
+        - name: route_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Route identifier
+      responses:
+        200:
+          description: RTZ file
+          content:
+            application/xml:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: No route available
+        500:
+          description: Export failed
+
+  /import/rtz:
+    post:
+      summary: Import RTZ route
+      description: Import a route from RTZ format file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: RTZ file to import
+      responses:
+        200:
+          description: RTZ imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  route_name:
+                    type: string
+                  waypoint_count:
+                    type: integer
+                  message:
+                    type: string
+        400:
+          description: Invalid RTZ file
+        500:
+          description: Import failed
+
+  /status:
+    get:
+      summary: Get service status
+      description: Check the current status of the planner service
+      responses:
+        200:
+          description: Service status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [operational, degraded, offline]
+                  enc_loaded:
+                    type: boolean
+                  region_built:
+                    type: boolean
+                  planner_ready:
+                    type: boolean
+                  route_available:
+                    type: boolean
+
+  /health:
+    get:
+      summary: Health check
+      description: Basic health check endpoint
+      responses:
+        200:
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  schemas:
+    Waypoint:
+      type: object
+      required:
+        - lat
+        - lon
+      properties:
+        lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          description: Latitude in decimal degrees
+        lon:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          description: Longitude in decimal degrees
+        name:
+          type: string
+          description: Waypoint name
+        speed:
+          type: number
+          format: double
+          minimum: 0
+          description: Speed in knots
+
+    PlanRequest:
+      type: object
+      required:
+        - start
+        - goal
+      properties:
+        start:
+          $ref: '#/components/schemas/Waypoint'
+        goal:
+          $ref: '#/components/schemas/Waypoint'
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Waypoint'
+          description: Optional intermediate waypoints
+        vessel_draft:
+          type: number
+          format: double
+          default: 5.0
+          minimum: 0
+          description: Vessel draft in meters
+        safety_depth:
+          type: number
+          format: double
+          default: 10.0
+          minimum: 0
+          description: Minimum safety depth in meters
+        under_keel_clearance:
+          type: number
+          format: double
+          default: 2.0
+          minimum: 0
+          description: Under-keel clearance in meters
+        vessel_speed:
+          type: number
+          format: double
+          default: 12.0
+          minimum: 0
+          description: Vessel speed in knots
+        enc_file:
+          type: string
+          description: Path to ENC file
+
+    PlanResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        route_id:
+          type: string
+          description: Unique route identifier
+        waypoints:
+          type: array
+          items:
+            type: object
+            properties:
+              lat:
+                type: number
+              lon:
+                type: number
+              heading_deg:
+                type: number
+              speed_kts:
+                type: number
+        total_distance_nm:
+          type: number
+          format: double
+          description: Total route distance in nautical miles
+        estimated_time_hours:
+          type: number
+          format: double
+          description: Estimated voyage time in hours
+        planning_time_seconds:
+          type: number
+          format: double
+          description: Time taken to plan route in seconds
+        message:
+          type: string
+
+    ValidateRequest:
+      type: object
+      properties:
+        route_id:
+          type: string
+          description: Route identifier to validate
+        rtz_content:
+          type: string
+          description: RTZ XML content to validate
+        checks:
+          type: array
+          items:
+            type: string
+            enum: [safety, tss, geometry, speed, cpa]
+          default: [safety, tss, geometry, speed]
+          description: Validation checks to perform
+
+    ValidateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        is_valid:
+          type: boolean
+          description: Whether route passes all critical checks
+        total_checks:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        warnings:
+          type: integer
+        critical_issues:
+          type: array
+          items:
+            type: string
+          description: List of critical validation failures
+        report_url:
+          type: string
+          description: URL to detailed validation report

@@ -1,0 +1,203 @@
+{
+  "timestamp": "2025-08-10 19:41:23",
+  "results": [
+    {
+      "scenario": "low_20.0m",
+      "obstacle_count": 3,
+      "grid_resolution": 20.0,
+      "planning_time": 0.22903704643249512,
+      "nodes_expanded": 947,
+      "path_length": 5097.1195907536485,
+      "waypoint_count": 256,
+      "memory_peak_mb": 114.703125,
+      "success": true
+    },
+    {
+      "scenario": "low_50.0m",
+      "obstacle_count": 3,
+      "grid_resolution": 50.0,
+      "planning_time": 0.12208700180053711,
+      "nodes_expanded": 487,
+      "path_length": 5055.850637640596,
+      "waypoint_count": 103,
+      "memory_peak_mb": 114.828125,
+      "success": true
+    },
+    {
+      "scenario": "low_100.0m",
+      "obstacle_count": 3,
+      "grid_resolution": 100.0,
+      "planning_time": 0.018623828887939453,
+      "nodes_expanded": 79,
+      "path_length": 5060.930695330498,
+      "waypoint_count": 52,
+      "memory_peak_mb": 114.84375,
+      "success": true
+    },
+    {
+      "scenario": "medium_20.0m",
+      "obstacle_count": 10,
+      "grid_resolution": 20.0,
+      "planning_time": 0.23307228088378906,
+      "nodes_expanded": 947,
+      "path_length": 5097.1195907536485,
+      "waypoint_count": 256,
+      "memory_peak_mb": 116.5625,
+      "success": true
+    },
+    {
+      "scenario": "medium_50.0m",
+      "obstacle_count": 10,
+      "grid_resolution": 50.0,
+      "planning_time": 0.11827492713928223,
+      "nodes_expanded": 487,
+      "path_length": 5055.850637640596,
+      "waypoint_count": 103,
+      "memory_peak_mb": 116.609375,
+      "success": true
+    },
+    {
+      "scenario": "medium_100.0m",
+      "obstacle_count": 10,
+      "grid_resolution": 100.0,
+      "planning_time": 0.019047021865844727,
+      "nodes_expanded": 79,
+      "path_length": 5060.930695330498,
+      "waypoint_count": 52,
+      "memory_peak_mb": 116.609375,
+      "success": true
+    },
+    {
+      "scenario": "high_20.0m",
+      "obstacle_count": 20,
+      "grid_resolution": 20.0,
+      "planning_time": 0.4202919006347656,
+      "nodes_expanded": 1716,
+      "path_length": 2856.820494196807,
+      "waypoint_count": 144,
+      "memory_peak_mb": 118.359375,
+      "success": true
+    },
+    {
+      "scenario": "high_50.0m",
+      "obstacle_count": 20,
+      "grid_resolution": 50.0,
+      "planning_time": 0.4263150691986084,
+      "nodes_expanded": 1713,
+      "path_length": 5123.152427360641,
+      "waypoint_count": 104,
+      "memory_peak_mb": 118.78125,
+      "success": true
+    },
+    {
+      "scenario": "high_100.0m",
+      "obstacle_count": 20,
+      "grid_resolution": 100.0,
+      "planning_time": 0.13754582405090332,
+      "nodes_expanded": 564,
+      "path_length": 5067.350893524642,
+      "waypoint_count": 52,
+      "memory_peak_mb": 118.78125,
+      "success": true
+    },
+    {
+      "scenario": "extreme_20.0m",
+      "obstacle_count": 30,
+      "grid_resolution": 20.0,
+      "planning_time": 0.427872896194458,
+      "nodes_expanded": 1722,
+      "path_length": 1658.7319765942693,
+      "waypoint_count": 84,
+      "memory_peak_mb": 122.78125,
+      "success": true
+    },
+    {
+      "scenario": "extreme_50.0m",
+      "obstacle_count": 30,
+      "grid_resolution": 50.0,
+      "planning_time": 0.5650489330291748,
+      "nodes_expanded": 2300,
+      "path_length": 2040.8555134887824,
+      "waypoint_count": 42,
+      "memory_peak_mb": 122.953125,
+      "success": true
+    },
+    {
+      "scenario": "extreme_100.0m",
+      "obstacle_count": 30,
+      "grid_resolution": 100.0,
+      "planning_time": 0.46419692039489746,
+      "nodes_expanded": 1914,
+      "path_length": 5241.18243318605,
+      "waypoint_count": 54,
+      "memory_peak_mb": 123.109375,
+      "success": true
+    },
+    {
+      "scenario": "\u5f00\u653e\u6c34\u57df",
+      "obstacle_count": 5,
+      "grid_resolution": 20.0,
+      "planning_time": 0.15741586685180664,
+      "nodes_expanded": 650,
+      "path_length": 4238.076578072814,
+      "waypoint_count": 213,
+      "memory_peak_mb": 123.109375,
+      "success": true
+    },
+    {
+      "scenario": "\u6e2f\u53e3\u533a\u57df",
+      "obstacle_count": 25,
+      "grid_resolution": 20.0,
+      "planning_time": 0.43738603591918945,
+      "nodes_expanded": 1720,
+      "path_length": 1978.1044272978347,
+      "waypoint_count": 100,
+      "memory_peak_mb": 126.328125,
+      "success": true
+    },
+    {
+      "scenario": "\u72ed\u7a84\u6c34\u9053",
+      "obstacle_count": 40,
+      "grid_resolution": 20.0,
+      "planning_time": 0.00013709068298339844,
+      "nodes_expanded": 1,
+      "path_length": 0,
+      "waypoint_count": 0,
+      "memory_peak_mb": 132.5,
+      "success": false
+    },
+    {
+      "scenario": "TSS\u533a\u57df",
+      "obstacle_count": 15,
+      "grid_resolution": 20.0,
+      "planning_time": 0.3128039836883545,
+      "nodes_expanded": 1279,
+      "path_length": 5657.614366009112,
+      "waypoint_count": 284,
+      "memory_peak_mb": 132.515625,
+      "success": true
+    },
+    {
+      "scenario": "\u6781\u9650\u6d4b\u8bd5",
+      "obstacle_count": 100,
+      "grid_resolution": 20.0,
+      "planning_time": 0.46126317977905273,
+      "nodes_expanded": 1568,
+      "path_length": 1658.4482874134735,
+      "waypoint_count": 84,
+      "memory_peak_mb": 140.578125,
+      "success": true
+    }
+  ],
+  "summary": {
+    "total_tests": 17,
+    "successful": 16,
+    "failed": 1,
+    "avg_time": 0.28439266979694366,
+    "std_time": 0.17032262702610784,
+    "min_time": 0.018623828887939453,
+    "max_time": 0.5650489330291748,
+    "baseline_met": true,
+    "worst_case_met": true
+  }
+}

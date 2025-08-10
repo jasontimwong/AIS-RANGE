@@ -1,0 +1,52 @@
+# Default Cost Field Configuration
+
+cost_weights:
+  distance: 1.0      # Weight for distance/length cost
+  curvature: 0.5     # Weight for turning/curvature cost  
+  safety: 2.0        # Weight for obstacle proximity cost
+  traffic: 1.5       # Weight for traffic/CPA cost
+  speed: 0.3         # Weight for speed constraint cost
+  depth: 1.0         # Weight for depth/UKC cost
+
+safety_parameters:
+  min_depth: 10.0           # Minimum safe water depth (meters)
+  safety_contour: 10.0      # Safety contour depth (meters)
+  under_keel_clearance: 2.0 # Required UKC (meters)
+  xtd_margin: 185.2         # Cross-track distance margin (meters = 0.1 NM)
+  obstacle_buffer: 100.0    # Buffer around obstacles (meters)
+
+vessel_parameters:
+  length: 180.0      # Vessel length (meters)
+  beam: 25.0         # Vessel beam (meters)
+  draft: 8.0         # Vessel draft (meters)
+  max_speed: 15.0    # Maximum speed (m/s = ~30 knots)
+  cruise_speed: 10.0 # Cruise speed (m/s = ~20 knots)
+  min_turn_radius: 200.0  # Minimum turning radius (meters)
+
+planner_parameters:
+  grid_resolution: 20.0     # Spatial discretization (meters)
+  angle_resolution: 0.3927  # Angular discretization (radians = 22.5 deg)
+  num_steer_angles: 5       # Number of steering angles to try
+  motion_step: 50.0         # Motion primitive step size (meters)
+  max_iterations: 5000      # Maximum search iterations
+  goal_tolerance_xy: 50.0   # Goal position tolerance (meters)
+  goal_tolerance_theta: 0.5236  # Goal heading tolerance (radians = 30 deg)
+
+traffic_parameters:
+  min_cpa: 926.0           # Minimum CPA threshold (meters = 0.5 NM)
+  tcpa_horizon: 1800.0     # TCPA time horizon (seconds = 30 min)
+  collision_risk_cpa: 463.0  # High collision risk CPA (meters = 0.25 NM)
+
+validation_parameters:
+  checks:
+    - safety      # Check no-go areas and depth
+    - tss        # Check TSS compliance
+    - geometry   # Check turn radius and continuity
+    - speed      # Check speed limits
+    - cpa        # Check CPA/TCPA with traffic
+  
+  thresholds:
+    min_clearance: 50.0     # Minimum clearance to hazards (meters)
+    max_turn_rate: 0.05     # Maximum turn rate (rad/s)
+    max_acceleration: 0.5   # Maximum acceleration (m/s²)
+    max_leg_length: 50000.0 # Maximum leg length (meters = 27 NM)

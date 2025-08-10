@@ -1,0 +1,286 @@
+>>> 运行确定性测试
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+No complete path found after 100 iterations
+✓ 确定性测试通过：100次运行产生相同结果
+  路径哈希: 1527630a5a606f96...
+✓ 浮点稳定性测试通过
+
+所有确定性测试通过！
+[0;32m✅ 确定性测试通过[0m
+>>> 几何鲁棒性（病理几何）
+/Users/jasonwong/planner/lib/geom/robust_ops.py:215: RuntimeWarning: invalid value encountered in scalar divide
+  cos_angle = np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+运行几何病理测试...
+✓ 自交修复测试通过
+✓ 重复点修复测试通过
+✓ 小孔洞填充测试通过
+
+运行500个病理案例测试...
+证据已保存: artifacts/geom_pathology/pathology_test_report.json
+
+病理测试完成:
+  成功: 500/500
+  崩溃: 0
+  保守修复: 0 (0.0%)
+
+所有几何鲁棒性测试通过！
+[0;32m✅ 几何鲁棒性测试通过（500案例0崩溃）[0m
+>>> 运行 S-57 vs S-101 可行域等价性测试（IoU≥0.99 / 面积差≤1%）
+S-101与S-57可行域一致性测试
+
+==================================================
+✓ DepthArea -> DEPARE
+✓ Obstruction -> OBSTRN
+✓ TrafficSeparationSchemeLane -> TSSLPT
+
+✓ 特征映射测试通过
+✓ 可航区域面积: 0.06
+✓ 禁航区数量: 2
+✓ TSS区域数量: 2
+
+✓ 可行域构建测试通过
+
+一致性报告:
+  IoU: 1.0000
+  面积差异: 0.00%
+  Hausdorff距离: 0.000000
+  S-101面积: 0.06
+  S-57面积: 0.06
+  一致性: ✓ 通过
+
+✓ 一致性测试通过
+
+栅格IoU测试:
+  交集: 16
+  并集: 146
+  IoU: 0.1096
+
+✓ 栅格IoU计算测试通过
+
+差异热图:
+  尺寸: (1, 1)
+  唯一值: [0.]
+
+✓ 差异热图生成测试通过
+
+证据导出:
+  特征数量: 4
+  特征类型: ['TrafficSeparationSchemeLane', 'DepthArea', 'RestrictedAreaNavigational', 'Obstruction']
+  一致性IoU: 0.9933
+  热图文件: artifacts/s101_evidence/s101_s57_diff_heatmap.json
+
+✓ 证据导出测试通过
+
+场景: 开放水域
+  实际IoU: 1.0000
+  期望IoU: 1.0000
+
+场景: 部分重叠
+  实际IoU: 0.3333
+  期望IoU: 0.3300
+
+场景: 包含关系
+  实际IoU: 0.2500
+  期望IoU: 0.2500
+
+✓ 多场景测试通过
+
+验收标准测试:
+  IoU: 0.998003 (要求 ≥ 0.99)
+  面积差: 0.2001% (要求 ≤ 1%)
+  结果: ✓ 通过
+
+✓ 验收标准测试通过
+
+==================================================
+所有S-101适配器测试通过！
+[0;32m✅ S-101适配器测试通过（IoU≥0.99）[0m
+>>> 检查S-164测试数据
+>>> 运行 S-164 冒烟测试（跳过，需要实际ENC数据）
+[1;33m⚠️  S-164需要IHO测试数据，暂时跳过[0m
+>>> 运行 S-421 schema 测试
+S-421导出测试
+
+==================================================
+✓ S-421导出成功: artifacts/s421/test_route.s421
+  航点数量: 3
+
+✓ Schema文件创建: artifacts/s421/s421_route.schema.json
+✓ Schema验证通过
+
+✓ RTZ到S-421转换成功
+  验证 3 个航点映射正确
+
+✓ 字段映射验证通过
+  核心字段: ✓
+  扩展字段: ✓
+  合规信息: 3 项
+
+✓ 最小S-421导出成功
+  航点: 2
+  腿段: 1
+
+✓ S-421导出已禁用 (FEATURE_FLAG_S421=false)
+✓ Feature Flag启用，导出成功
+
+✓ 映射文档生成: artifacts/s421/rtz_s421_mapping.md
+
+==================================================
+所有S-421导出测试通过！
+[0;32m✅ S-421导出测试通过[0m
+>>> 运行增量重规划性能基准（平均≤0.3s）
+测试增量重规划...
+平均重规划时间: 0.001s
+✅ 性能达标
+[0;32m✅ 增量重规划性能达标（≤0.3s）[0m
+>>> 运行性能基准测试
+No complete path found after 5000 iterations
+Traceback (most recent call last):
+  File "/Users/jasonwong/planner/benchmarks/bench_plan.py", line 439, in main
+    benchmark.run_density_resolution_matrix()
+  File "/Users/jasonwong/planner/benchmarks/bench_plan.py", line 130, in run_density_resolution_matrix
+    region = self.create_test_scenario(density_name, num_obstacles)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/planner/benchmarks/bench_plan.py", line 96, in create_test_scenario
+    navigable = navigable.difference(no_go_areas)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/anaconda3/lib/python3.11/site-packages/shapely/decorators.py", line 173, in wrapper
+    result = func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/anaconda3/lib/python3.11/site-packages/shapely/geometry/base.py", line 658, in difference
+    return shapely.difference(self, other, grid_size=grid_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/anaconda3/lib/python3.11/site-packages/shapely/decorators.py", line 173, in wrapper
+    result = func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/anaconda3/lib/python3.11/site-packages/shapely/decorators.py", line 88, in wrapped
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jasonwong/anaconda3/lib/python3.11/site-packages/shapely/set_operations.py", line 100, in difference
+    return lib.difference(a, b, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+shapely.errors.GEOSException: TopologyException: side location conflict at -844.58073642164038 -647.59556588933538. This can occur if the input geometry is invalid.
+
+============================================================
+ECDIS路径规划器 - 性能基准测试
+============================================================
+
+============================================================
+密度 × 分辨率 性能矩阵测试
+============================================================
+  low      /    10m:  0.492s ✓
+  low      /    20m:  0.235s ✓
+  low      /    50m:  0.118s ✓
+  low      /   100m:  0.019s ✓
+
+❌ 测试失败: TopologyException: side location conflict at -844.58073642164038 -647.59556588933538. This can occur if the input geometry is invalid.
+[1;33m⚠️  性能基准测试需要关注[0m
+>>> 创建金样测试框架
+[0;32m✅ 创建金样测试框架[0m
+警告: 无金样文件，需要生成baseline
+⚠️  需要生成金样baseline
+[1;33m⚠️  需要生成金样baseline[0m
+>>> 生成验收证据包
+✓ 证据包已生成: artifacts/EVIDENCE-20250810-175016.zip
+  大小: 7.5 KB
+  SHA256: 2c7f28eaff2632ce7a33a3e878eba067...
+  包含: 8 个文件
+[0;32m✅ 证据包生成成功: acceptance_20250810_175016[0m

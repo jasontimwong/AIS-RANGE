@@ -1,0 +1,195 @@
+code: ECDIS-PLANNER-NEXT
+version: 1.1.0
+freeze_window: 14d  # 冻结期：仅允许可靠性/证据链/API稳定性相关变更
+north_star:
+  - "在不增加核心复杂度的前提下，把可靠性与证据链做扎实，形成可审计的标准对照材料"
+  - "为 S-101/S-164 与 S-421 预留可插拔扩展，不破坏 v1 API"
+
+epics:
+  - id: E0-arch-guardrails
+    name: 架构护栏与版本治理
+    tasks:
+      - id: T0.1-adr
+        desc: "建立 ADR 机制（/docs/adr/*.md），补齐现有关键决策记录（投影/代价项/搜索器/RTZ I/O）"
+        deliverables:
+          - "docs/adr/0001-projection-units.md"
+          - "docs/adr/0002-cost-plugin-abi.md"
+          - "docs/adr/0003-rtz-io-versioning.md"
+        acceptance:
+          - "每条 ADR 含决策、备选、取舍、回退策略、影响面"
+      - id: T0.2-api-semver
+        desc: "为 PlanRequest/ValidationReport/RTZ-IO 标注 v1 schema 并生成 JSON Schema"
+        deliverables:
+          - "schemas/plan_request.v1.json"
+          - "schemas/validation_report.v1.json"
+        acceptance:
+          - "CI 校验：接口变更需 bump 语义版本并生成迁移说明"
+
+  - id: E1-reliability-hardening
+    name: 可靠性硬化（确定性/鲁棒/证据链）
+    tasks:
+      - id: T1.1-determinism
+        desc: "确定性保障：随机源统一 seed、浮点稳定、并发无数据争用"
+        deliverables:
+          - "docs/reproducibility.md"
+          - "tests/property/test_determinism.py"
+        acceptance:
+          - "同输入下 100 次运行得到相同 route.rtz 哈希与报告哈希"
+      - id: T1.2-geom-robust
+        desc: "几何鲁棒：退化多边形/自交/极小环/接缝修补"
+        deliverables:
+          - "lib/geom/robust_ops.py"
+          - "tests/fuzz/test_geom_pathologies.py"
+        acceptance:
+          - "500 个病理用例中 0 崩溃，≤1% 触发保守退让（自动加厚障碍）"
+      - id: T1.3-property-tests
+        desc: "性质测试（Hypothesis/Metamorphic）：缩放/旋转/平移不改变可行性"
+        deliverables:
+          - "tests/property/test_metamorphic_transform.py"
+        acceptance:
+          - "三种几何变换下，规划可行/违规计数不变"
+      - id: T1.4-evidence-pack
+        desc: "证据包生成器：压缩包内含报告/参数/版本/截图/日志，带 SHA256"
+        deliverables:
+          - "tools/evidence_pack.py"
+          - "artifacts/specs/evidence_manifest.yaml"
+        acceptance:
+          - "一键生成 EVIDENCE-YYYYMMDD-HHMMSS.zip；CI 存档留存 30 天"
+
+  - id: E2-standards-proofing
+    name: 标准可证明性（条款映射与自动核验）
+    tasks:
+      - id: T2.1-req-trace
+        desc: "条款→测试用例→代码点的可追溯矩阵（MSC.232/IEC 61174/IHO S-64 & S-164）"
+        deliverables:
+          - "docs/compliance/trace_matrix.xlsx"
+          - "ci/trace_check.py"
+        acceptance:
+          - "CI 校验：每个条款至少一个自动/半自动用例绑定"
+      - id: T2.2-checks-tagging
+        desc: "RouteChecker 输出增加 'clause_refs' 字段，逐条给出对应标准条款 ID"
+        deliverables:
+          - "schemas/validation_report.v1.json (with clause_refs)"
+          - "lib/checks/route_checker.py (annotated)"
+        acceptance:
+          - "报告包含触发/通过条款的 ID 与证据片段索引"
+
+  - id: E3-s101-s164-track
+    name: S-101/S-164 可控扩展（不影响 v1）
+    tasks:
+      - id: T3.1-enc-adapter
+        desc: "S-101 适配层（特征映射至内部要素集），与 S-57 并存双栈"
+        deliverables:
+          - "lib/enc/s101_adapter.py"
+          - "docs/enc_mapping_s57_s101.md"
+        acceptance:
+          - "同一水域，安全等深线/限制区的可行域结果一致（允许≤1% 栅格差异）"
+      - id: T3.2-s164-smoke
+        desc: "引入 S-164 子集到 CI，先做 smoke tests（渲染/告警一致性校核钩子）"
+        deliverables:
+          - "ci/s164_smoke.yml"
+        acceptance:
+          - "CI 成功加载并完成 3 个核心场景的规划+校核"
+
+  - id: E4-s421-interoperability
+    name: 路由交换 S-421（IEC 63173-1）最小打通
+    tasks:
+      - id: T4.1-s421-iomap
+        desc: "RTZ ↔ S-421 字段映射定义与原型转换器（单向先 RTZ→S-421）"
+        deliverables:
+          - "docs/io/rtz_s421_mapping.md"
+          - "lib/io/s421_export.py"
+        acceptance:
+          - "样例路线能导出 S-421（最小子集），通过 schema 校验（本地）"
+      - id: T4.2-s421-roundtrip
+        desc: "小样本往返与差分比较（如不完整字段以注释/扩展字段保留）"
+        deliverables:
+          - "tests/io/test_s421_roundtrip.py"
+        acceptance:
+          - "往返差异报告仅限非对称字段，核心航段/速度一致"
+
+  - id: E5-perf-deterministic
+    name: 性能与确定性预算（不牺牲可读性）
+    tasks:
+      - id: T5.1-prof-bench
+        desc: "基准与剖析：不同目标密度/分辨率的时延与内存曲线"
+        deliverables:
+          - "benchmarks/bench_plan.py"
+          - "docs/perf_budget.md"
+        acceptance:
+          - "基线 0.3s±10%；最差场景 < 2s；内存峰值 ≤ 512MB（可配置）"
+      - id: T5.2-incr-replan
+        desc: "增量重规划：代价场局部更新，50% 以上场景 < 0.3s"
+        deliverables:
+          - "lib/planner/incremental_replan.py"
+        acceptance:
+          - "在 10 目标随机扰动下，重规划平均 ≤ 0.3s"
+
+  - id: E6-scenario-library
+    name: 可复现实例库（最小却典型）
+    tasks:
+      - id: T6.1-curated-scenarios
+        desc: "精炼 5 个标准化场景：外海TSS、近岸浅滩、限速港区、复杂交汇、窄水道"
+        deliverables:
+          - "scenarios/{tss,shoal,harbor,merge,narrow}/*.yaml"
+        acceptance:
+          - "每个场景自带期望最小裕度/CPA阈值/规划上限时间；CI 自动对比"
+      - id: T6.2-approval-testing
+        desc: "Approval Testing（金样比对）：路线几何+报告 JSON 精确比对"
+        deliverables:
+          - "tests/approval/test_golden_routes.py"
+        acceptance:
+          - "变更即出 diff（指导是否需要 bump 次版本）"
+
+  - id: E7-observability-forensics
+    name: 可观测性与事后取证
+    tasks:
+      - id: T7.1-telemetry
+        desc: "规划遥测：阶段耗时、节点展开数、启发式误差、收敛曲线"
+        deliverables:
+          - "lib/telemetry/hooks.py"
+          - "docs/telemetry_fields.md"
+        acceptance:
+          - "证据包内含可视化 json/csv；性能回归可画趋势"
+      - id: T7.2-failure-minidump
+        desc: "失败最小转储：输入切片、局部 ENC 片段、参数、随机种子"
+        deliverables:
+          - "tools/minidump.py"
+        acceptance:
+          - "任何失败场景可用最小包重现（<10MB）"
+
+  - id: E8-security-offline
+    name: 供应链与离线合规
+    tasks:
+      - id: T8.1-sbom
+        desc: "生成 SBOM（CycloneDX），三方依赖固定版本"
+        deliverables:
+          - "sbom/bom.json"
+        acceptance:
+          - "CI 校验 license 白名单；hash pin"
+      - id: T8.2-airgap
+        desc: "容器出网拦截与 RF 设备拒绝策略（离线/内网保障）"
+        deliverables:
+          - "ops/airgap.md"
+        acceptance:
+          - "默认构建不具备任何外联能力；ops 文档可审计"
+
+milestones:
+  - id: M1-freeze-harden
+    name: 冻结期硬化完成
+    target_weeks: 2
+    must_have: [T0.2-api-semver, T1.1-determinism, T1.4-evidence-pack, T2.2-checks-tagging]
+  - id: M2-s101-s421-beta
+    name: S-101 适配 & S-421 导出 Beta
+    target_weeks: 4
+    must_have: [T3.1-enc-adapter, T3.2-s164-smoke, T4.1-s421-iomap]
+  - id: M3-perf-incremental
+    name: 增量重规划达标
+    target_weeks: 5
+    must_have: [T5.1-prof-bench, T5.2-incr-replan, T6.2-approval-testing]
+
+quality_gates:
+  - "同输入同版本→route.rtz 哈希稳定"
+  - "证据包完整并含 clause_refs"
+  - "基准场景规划 < 2s，重规划 < 0.5s；性能回归无显著退化"
+  - "API/Schema 变更需通过 semver 与迁移说明"
