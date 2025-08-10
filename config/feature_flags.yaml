@@ -1,0 +1,12 @@
+feature_flags:
+  colreg_rules: true
+  s101_adapter: true
+  s164_ci: true
+  s421_export: false
+  incr_replan: true
+  s102_adapter: false
+  s111_currents: false
+  s124_warnings: false
+  ukc_plugin: false
+  s421_roundtrip: false
+  stress_fuzzer: false

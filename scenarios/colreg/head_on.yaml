@@ -1,0 +1,47 @@
+# COLREG Rule 14: Head-on Situation
+# Two power-driven vessels meeting on reciprocal courses
+# Both vessels must alter course to starboard
+
+meta:
+  name: "Head-on Meeting"
+  version: 1
+  description: "Vessels on reciprocal courses, both must alter to starboard"
+  
+ownship:
+  lat: 37.8000
+  lon: -122.5000
+  sog: 10.0  # knots
+  cog: 90.0  # heading East
+  heading: 90.0
+  length_m: 200
+  beam_m: 32
+  draft_m: 10
+  
+targets:
+  - mmsi: 111000002
+    lat: 37.8000  # Same latitude
+    lon: -122.4000  # 6nm East (will meet head-on)
+    sog: 10.0
+    cog: 270.0  # Reciprocal course (heading West)
+    heading: 270.0
+    length_m: 180
+    beam_m: 30
+    draft_m: 9
+    
+params:
+  safety_depth_m: 10
+  min_turn_radius_nm: 0.5
+  xtd_nm: 0.2
+  safety_distance_nm: 1.0
+  safety_time_min: 10.0
+  
+expectation:
+  violations: 1  # Head-on requires action
+  encounter_type: "HEAD_ON"
+  required_action: "ALTER_COURSE_STARBOARD"
+  applicable_rules: [14]
+  hints:
+    - "Head-on situation detected"
+    - "Both vessels must alter course to starboard"
+    - "Pass port to port"
+    - "Sound one short blast"

@@ -17,6 +17,13 @@ from pathlib import Path
 from lib.planner.hybrid_astar import Route
 from lib.region.feasible_region import FeasibleRegion
 from lib.region.tss_layers import TSSZones
+from lib.colreg import (
+    COLREGRules, 
+    COLREGValidator,
+    Vessel,
+    VesselType,
+    NavigationStatus
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +85,33 @@ CLAUSE_MAPPING = {
             'clause': '8.2.1',
             'requirement': 'Prohibited area avoidance'
         }
+    ],
+    'colreg_compliance': [
+        {
+            'standard': 'COLREG',
+            'clause': 'Rule 7',
+            'requirement': 'Risk of collision assessment'
+        },
+        {
+            'standard': 'COLREG',
+            'clause': 'Rule 8',
+            'requirement': 'Action to avoid collision'
+        },
+        {
+            'standard': 'COLREG',
+            'clause': 'Rule 13',
+            'requirement': 'Overtaking'
+        },
+        {
+            'standard': 'COLREG',
+            'clause': 'Rule 14',
+            'requirement': 'Head-on situation'
+        },
+        {
+            'standard': 'COLREG',
+            'clause': 'Rule 15',
+            'requirement': 'Crossing situation'
+        }
     ]
 }
 
@@ -96,7 +130,7 @@ class ValidationCheck:
     name: str
     status: ValidationStatus
     message: str
-    category: str  # safety, tss, geometry, speed, cpa
+    category: str  # safety, tss, geometry, speed, cpa, colreg
     severity: str  # critical, high, medium, low
     clause_refs: List[Dict[str, str]] = field(default_factory=list)
     evidence: Dict[str, Any] = field(default_factory=dict)
@@ -128,6 +162,7 @@ class RouteValidationReport:
     geometry_checks: List[ValidationCheck]
     speed_checks: List[ValidationCheck]
     cpa_checks: List[ValidationCheck]
+    colreg_checks: List[ValidationCheck]
     
     # Summary
     is_valid: bool
@@ -142,7 +177,8 @@ class RouteValidationReport:
         # 收集所有条款引用
         all_clauses = {}
         all_checks = (self.safety_checks + self.tss_checks + 
-                     self.geometry_checks + self.speed_checks + self.cpa_checks)
+                     self.geometry_checks + self.speed_checks + 
+                     self.cpa_checks + self.colreg_checks)
         
         for check in all_checks:
             for clause in check.clause_refs:
@@ -168,7 +204,8 @@ class RouteValidationReport:
                 "tss": [self._check_to_dict(c) for c in self.tss_checks],
                 "geometry": [self._check_to_dict(c) for c in self.geometry_checks],
                 "speed": [self._check_to_dict(c) for c in self.speed_checks],
-                "cpa": [self._check_to_dict(c) for c in self.cpa_checks]
+                "cpa": [self._check_to_dict(c) for c in self.cpa_checks],
+                "colreg": [self._check_to_dict(c) for c in self.colreg_checks]
             },
             "critical_issues": self.critical_issues,
             "recommendations": self.recommendations,
@@ -204,7 +241,8 @@ class RouteChecker:
                  feasible_region: FeasibleRegion,
                  safety_depth: float = 10.0,
                  xtd_limit: float = 185.2,  # 0.1 NM in meters
-                 min_cpa: float = 926.0):  # 0.5 NM in meters
+                 min_cpa: float = 926.0,  # 0.5 NM in meters
+                 enable_colreg: bool = True):
         """
         Initialize route checker.
         
@@ -213,21 +251,32 @@ class RouteChecker:
             safety_depth: Minimum safe water depth in meters
             xtd_limit: Cross-track distance limit in meters
             min_cpa: Minimum CPA to other vessels in meters
+            enable_colreg: Enable COLREG compliance checking
         """
         self.region = feasible_region
         self.safety_depth = safety_depth
         self.xtd_limit = xtd_limit
         self.min_cpa = min_cpa
+        self.enable_colreg = enable_colreg
+        
+        if self.enable_colreg:
+            self.colreg_rules = COLREGRules(
+                safety_distance_nm=min_cpa / 1852.0,  # Convert meters to nm
+                safety_time_min=10.0
+            )
+            self.colreg_validator = COLREGValidator(self.colreg_rules)
         
         self.checks_performed = []
     
-    def validate_route(self, route: Route, route_name: str = "Route") -> RouteValidationReport:
+    def validate_route(self, route: Route, route_name: str = "Route", 
+                      traffic_vessels: List[Vessel] = None) -> RouteValidationReport:
         """
         Perform complete route validation.
         
         Args:
             route: Route to validate
             route_name: Name for the route
+            traffic_vessels: List of traffic vessels for COLREG checking
             
         Returns:
             Complete validation report
@@ -240,6 +289,7 @@ class RouteChecker:
         geometry_checks = []
         speed_checks = []
         cpa_checks = []
+        colreg_checks = []
         
         # Perform safety checks
         safety_checks.extend(self._check_no_go_areas(route))
@@ -262,8 +312,13 @@ class RouteChecker:
         # Perform CPA checks (placeholder - requires traffic data)
         # cpa_checks.extend(self._check_cpa_tcpa(route, traffic_data))
         
+        # Perform COLREG checks if enabled
+        if self.enable_colreg and traffic_vessels is not None:
+            colreg_checks.extend(self._check_colreg_compliance(route, traffic_vessels))
+        
         # Compile all checks
-        all_checks = safety_checks + tss_checks + geometry_checks + speed_checks + cpa_checks
+        all_checks = (safety_checks + tss_checks + geometry_checks + 
+                     speed_checks + cpa_checks + colreg_checks)
         
         # Count results
         total_checks = len(all_checks)
@@ -303,6 +358,7 @@ class RouteChecker:
             geometry_checks=geometry_checks,
             speed_checks=speed_checks,
             cpa_checks=cpa_checks,
+            colreg_checks=colreg_checks,
             is_valid=is_valid,
             critical_issues=critical_issues,
             recommendations=recommendations,
@@ -656,4 +712,107 @@ class RouteChecker:
         if speed_warnings:
             recommendations.append("Review and adjust speed profile for safety")
         
+        colreg_warnings = [c for c in checks if c.category == "colreg" and c.status == ValidationStatus.WARNING]
+        if colreg_warnings:
+            recommendations.append("Adjust route to comply with COLREG collision avoidance rules")
+            # Add specific COLREG recommendations
+            encounter_types = set()
+            for warning in colreg_warnings:
+                if 'encounter_type' in warning.evidence:
+                    encounter_types.add(warning.evidence['encounter_type'])
+            
+            if 'CROSSING' in encounter_types:
+                recommendations.append("Consider altering course to starboard for crossing situations")
+            if 'HEAD_ON' in encounter_types:
+                recommendations.append("Alter course to starboard for head-on encounters")
+            if 'OVERTAKING' in encounter_types:
+                recommendations.append("Maintain adequate clearance when overtaking")
+        
         return recommendations
+    
+    def _check_colreg_compliance(self, route: Route, traffic_vessels: List[Vessel]) -> List[ValidationCheck]:
+        """Check COLREG compliance with traffic vessels."""
+        checks = []
+        
+        if not traffic_vessels:
+            checks.append(ValidationCheck(
+                name="COLREG Compliance",
+                status=ValidationStatus.INFO,
+                message="No traffic vessels to check",
+                category="colreg",
+                severity="low"
+            ))
+            return checks
+        
+        # Create own vessel representation
+        own_vessel = Vessel(
+            mmsi="OWNSHIP",
+            position=(0, 0),  # Will be updated for each waypoint
+            speed=10.0,  # Default speed in knots
+            course=90.0,  # Will be updated
+            heading=90.0,
+            vessel_type=VesselType.POWER_DRIVEN,
+            nav_status=NavigationStatus.UNDERWAY_USING_ENGINE
+        )
+        
+        # Check each waypoint against traffic
+        violations_found = False
+        for i, (x, y) in enumerate(route.waypoints):
+            # Update own vessel position and course
+            own_vessel.position = (y / 111000.0 + 37.8, x / 111000.0 / np.cos(np.radians(37.8)) - 122.5)  # Convert to lat/lon
+            if i < len(route.headings):
+                own_vessel.course = np.degrees(route.headings[i]) % 360
+                own_vessel.heading = own_vessel.course
+            if i < len(route.velocities):
+                own_vessel.speed = route.velocities[i] * 1.94384  # m/s to knots
+            
+            # Check against each traffic vessel
+            for target in traffic_vessels:
+                assessment = self.colreg_rules.assess_situation(own_vessel, target)
+                
+                # Record any required actions
+                if assessment.risk_level in ['high', 'medium']:
+                    if assessment.recommended_action.name != 'MAINTAIN_COURSE':
+                        violations_found = True
+                        
+                        colreg_check = ValidationCheck(
+                            name=f"COLREG WP{i+1} vs {target.mmsi}",
+                            status=ValidationStatus.WARNING,
+                            message=f"{assessment.encounter_type.name}: {assessment.explanation}",
+                            category="colreg",
+                            severity="high" if assessment.risk_level == "high" else "medium",
+                            location=(x, y),
+                            waypoint_index=i,
+                            evidence={
+                                "encounter_type": assessment.encounter_type.name,
+                                "risk_level": assessment.risk_level,
+                                "recommended_action": assessment.recommended_action.name,
+                                "applicable_rules": assessment.applicable_rules,
+                                "target_mmsi": target.mmsi
+                            }
+                        )
+                        
+                        # Add clause references for applicable rules
+                        for rule_num in assessment.applicable_rules:
+                            colreg_check.clause_refs.append({
+                                'standard': 'COLREG',
+                                'clause': f'Rule {rule_num}',
+                                'requirement': assessment.explanation,
+                                'status': 'NON_COMPLIANT'
+                            })
+                        
+                        checks.append(colreg_check)
+        
+        # Add overall pass check if no violations
+        if not violations_found:
+            colreg_check = ValidationCheck(
+                name="COLREG Compliance",
+                status=ValidationStatus.PASS,
+                message="Route complies with COLREG rules for all traffic",
+                category="colreg",
+                severity="high"
+            )
+            colreg_check.set_clause_compliance('colreg_compliance')
+            checks.append(colreg_check)
+        
+        return checks

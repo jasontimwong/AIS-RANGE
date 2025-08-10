@@ -1,0 +1,47 @@
+# COLREG Rule 13: Overtaking
+# Vessel coming up from more than 22.5° abaft the beam
+# Overtaking vessel must keep clear
+
+meta:
+  name: "Overtaking Situation"
+  version: 1
+  description: "Own vessel overtaking slower vessel, must keep clear"
+  
+ownship:
+  lat: 37.8000
+  lon: -122.5200  # Behind target vessel
+  sog: 15.0  # Faster speed for overtaking
+  cog: 90.0  # Same course as target (East)
+  heading: 90.0
+  length_m: 200
+  beam_m: 32
+  draft_m: 10
+  
+targets:
+  - mmsi: 111000003
+    lat: 37.8000  # Same latitude
+    lon: -122.5000  # Ahead of ownship
+    sog: 8.0  # Slower speed
+    cog: 90.0  # Same course (East)
+    heading: 90.0
+    length_m: 150
+    beam_m: 25
+    draft_m: 8
+    
+params:
+  safety_depth_m: 10
+  min_turn_radius_nm: 0.5
+  xtd_nm: 0.2
+  safety_distance_nm: 1.0
+  safety_time_min: 10.0
+  
+expectation:
+  violations: 1  # Overtaking vessel must take action
+  encounter_type: "OVERTAKING"
+  required_action: "ALTER_COURSE"  # Port or starboard
+  applicable_rules: [13, 16]
+  hints:
+    - "Own vessel is overtaking"
+    - "Must keep clear of vessel being overtaken"
+    - "May overtake on either side with adequate clearance"
+    - "Sound appropriate signals (2 prolonged, 1 or 2 short)"

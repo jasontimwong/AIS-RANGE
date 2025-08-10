@@ -1,0 +1,49 @@
+# COLREG Rule 9: Narrow Channels
+# Vessels in narrow channels must keep to starboard side
+# Small vessels shall not impede passage of vessels that can navigate only within channel
+
+meta:
+  name: "Narrow Channel Meeting"
+  version: 1
+  description: "Two vessels meeting in narrow channel, both keep to starboard"
+  
+ownship:
+  lat: 37.8000
+  lon: -122.5000
+  sog: 8.0  # Reduced speed in narrow channel
+  cog: 90.0  # Eastbound in channel
+  heading: 90.0
+  length_m: 200
+  beam_m: 32
+  draft_m: 10  # Deep draft vessel
+  
+targets:
+  - mmsi: 111000004
+    lat: 37.8005  # Slightly north (starboard side of channel)
+    lon: -122.4800  # Approaching from East
+    sog: 6.0  # Slow speed in channel
+    cog: 270.0  # Westbound
+    heading: 270.0
+    length_m: 100  # Smaller vessel
+    beam_m: 20
+    draft_m: 5
+    
+params:
+  safety_depth_m: 12  # Shallow water
+  channel_width_nm: 0.1  # Narrow channel (185m)
+  min_turn_radius_nm: 0.75  # Limited maneuverability
+  xtd_nm: 0.05  # Tight cross-track limits
+  safety_distance_nm: 0.5  # Reduced in narrow waters
+  safety_time_min: 5.0
+  
+expectation:
+  violations: 1  # Action required in narrow channel
+  encounter_type: "HEAD_ON"  # Meeting in narrow channel
+  required_action: "ALTER_COURSE_STARBOARD"
+  applicable_rules: [9, 14]  # Rules 9 (narrow channels) and 14 (head-on)
+  hints:
+    - "Narrow channel - keep to starboard side"
+    - "Both vessels alter course to starboard"
+    - "Pass port to port with reduced speed"
+    - "Sound appropriate signals for narrow channel"
+    - "Small vessel should not impede large vessel"

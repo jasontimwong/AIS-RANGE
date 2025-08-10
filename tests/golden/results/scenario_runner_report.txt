@@ -1,0 +1,77 @@
+======================================================================
+COLREG SCENARIO TEST REPORT
+======================================================================
+Timestamp: 2025-08-10T20:08:19.088201
+
+Total Scenarios: 5
+Passed: 5
+Failed: 0
+
+----------------------------------------------------------------------
+Scenario: Crossing - Give Way
+Status: ✓ PASSED
+
+  Target 111000001:
+    Encounter: CROSSING
+    Risk: high
+    Rules: 15, 16
+    Action: ALTER_COURSE_STARBOARD
+
+  Recommendations:
+    • ALTER_COURSE_STARBOARD: Rule 15: Give way to vessel on starboard - alter course to starboard to pass astern
+
+----------------------------------------------------------------------
+Scenario: Head-on Meeting
+Status: ✓ PASSED
+
+  Target 111000002:
+    Encounter: HEAD_ON
+    Risk: high
+    Rules: 14
+    Action: ALTER_COURSE_STARBOARD
+
+  Recommendations:
+    • ALTER_COURSE_STARBOARD: Rule 14: Head-on situation - both vessels alter to starboard
+
+----------------------------------------------------------------------
+Scenario: Overtaking Situation
+Status: ✓ PASSED
+
+  Target 111000003:
+    Encounter: OVERTAKING
+    Risk: medium
+    Rules: 13, 16
+    Action: ALTER_COURSE_STARBOARD
+
+  Recommendations:
+    • ALTER_COURSE_STARBOARD: Rule 13: Overtaking vessel must keep clear
+
+----------------------------------------------------------------------
+Scenario: Narrow Channel Meeting
+Status: ✓ PASSED
+
+  Target 111000004:
+    Encounter: HEAD_ON
+    Risk: high
+    Rules: 14
+    Action: ALTER_COURSE_STARBOARD
+
+  Recommendations:
+    • ALTER_COURSE_STARBOARD: Rule 14: Head-on situation - both vessels alter to starboard
+
+----------------------------------------------------------------------
+Scenario: TSS Lane Compliance
+Status: ✓ PASSED
+
+  Target 111000005:
+    Encounter: CROSSING
+    Risk: high
+    Rules: 15, 16
+    Action: ALTER_COURSE_STARBOARD
+
+  Recommendations:
+    • ALTER_COURSE_STARBOARD: Rule 15: Give way to vessel on starboard - alter course to starboard to pass astern
+
+======================================================================
+SUMMARY: 5/5 scenarios passed
+======================================================================

@@ -1,0 +1,52 @@
+# COLREG Rule 10: Traffic Separation Schemes
+# Vessels must use appropriate traffic lane
+# Avoid crossing traffic lanes if possible
+
+meta:
+  name: "TSS Lane Compliance"
+  version: 1
+  description: "Vessel in TSS encounters crossing traffic"
+  
+ownship:
+  lat: 37.8000
+  lon: -122.5000
+  sog: 12.0  # Normal speed in TSS
+  cog: 90.0  # Eastbound in TSS lane
+  heading: 90.0
+  length_m: 200
+  beam_m: 32
+  draft_m: 10
+  
+targets:
+  - mmsi: 111000005
+    lat: 37.7900  # South of ownship - on starboard
+    lon: -122.4900  # East of ownship
+    sog: 8.0
+    cog: 0.0  # Northbound - crossing TSS from starboard
+    heading: 0.0
+    length_m: 120
+    beam_m: 20
+    draft_m: 6
+    description: "Vessel crossing TSS"
+    
+params:
+  safety_depth_m: 15
+  tss_lane_width_nm: 0.5
+  separation_zone_width_nm: 0.1
+  min_turn_radius_nm: 0.5
+  xtd_nm: 0.2
+  safety_distance_nm: 1.0
+  safety_time_min: 10.0
+  in_tss: true
+  
+expectation:
+  violations: 1  # Crossing vessel creates risk
+  encounter_type: "CROSSING"
+  required_action: "MAINTAIN_OR_ALTER"
+  applicable_rules: [10, 15]  # TSS rules and crossing rules
+  hints:
+    - "Own vessel in TSS must maintain course in lane"
+    - "Crossing vessel should cross at right angles"
+    - "Crossing vessel should not impede vessels in TSS"
+    - "Own vessel may need to take action if crossing vessel doesn't"
+    - "Avoid crossing separation zone"

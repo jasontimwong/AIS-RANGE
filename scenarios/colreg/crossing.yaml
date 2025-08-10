@@ -1,0 +1,46 @@
+# COLREG Rule 15: Crossing Situation
+# Own vessel encounters target vessel crossing from starboard
+# Own vessel is give-way vessel and must take action
+
+meta:
+  name: "Crossing - Give Way"
+  version: 1
+  description: "Target vessel on starboard side, own vessel must give way"
+  
+ownship:
+  lat: 37.8000
+  lon: -122.5000
+  sog: 10.0  # knots
+  cog: 90.0  # heading East
+  heading: 90.0
+  length_m: 200
+  beam_m: 32
+  draft_m: 10
+  
+targets:
+  - mmsi: 111000001
+    lat: 37.7900  # South of ownship
+    lon: -122.4900  # East of ownship  
+    sog: 12.0
+    cog: 20.0  # North-northeast course - will cross ahead
+    heading: 20.0
+    length_m: 150
+    beam_m: 25
+    draft_m: 8
+    
+params:
+  safety_depth_m: 10
+  min_turn_radius_nm: 0.5
+  xtd_nm: 0.2
+  safety_distance_nm: 1.0
+  safety_time_min: 10.0
+  
+expectation:
+  violations: 1  # Give-way situation requires action
+  encounter_type: "CROSSING"
+  required_action: "ALTER_COURSE_STARBOARD"
+  applicable_rules: [15, 16]
+  hints:
+    - "Own vessel has target on starboard - must give way"
+    - "Alter course to starboard to pass astern"
+    - "Take early and substantial action per Rule 16"
