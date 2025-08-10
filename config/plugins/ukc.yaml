@@ -1,0 +1,4 @@
+min_ukc_m: 1.0
+default_draft_m: 9.5
+tide_elevation_m: 0.5
+wave_heave_m: 0.3

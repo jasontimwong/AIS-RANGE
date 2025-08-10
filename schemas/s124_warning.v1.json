@@ -1,0 +1,30 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"S-124 mock warnings",
+  "type":"object",
+  "properties":{
+    "warnings":{
+      "type":"array",
+      "items":{
+        "type":"object",
+        "required":["id","category","geometry","time_start","time_end"],
+        "properties":{
+          "id":{"type":"string"},
+          "category":{"enum":["speed_limit","prohibited"]},
+          "speed_limit_kts":{"type":"number"},
+          "geometry":{
+            "type":"object",
+            "properties":{
+              "type":{"const":"Polygon"},
+              "coordinates":{"type":"array"}
+            },
+            "required":["type","coordinates"]
+          },
+          "time_start":{"type":"string","format":"date-time"},
+          "time_end":{"type":"string","format":"date-time"}
+        }
+      }
+    }
+  },
+  "required":["warnings"]
+}
