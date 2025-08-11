@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RTZ Route Exchange Format",
+  "description": "IEC 61174:2015 Route Transfer Format Schema",
+  "type": "object",
+  "required": ["route"],
+  "properties": {
+    "route": {
+      "type": "object",
+      "required": ["routeInfo", "waypoints"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "RTZ format version",
+          "pattern": "^1\\.[0-2]$",
+          "default": "1.2"
+        },
+        "routeInfo": {
+          "type": "object",
+          "required": ["routeName"],
+          "properties": {
+            "routeName": {
+              "type": "string",
+              "description": "Name of the route",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "routeAuthor": {
+              "type": "string",
+              "description": "Author of the route"
+            },
+            "routeStatus": {
+              "type": "string",
+              "description": "Status of the route",
+              "enum": ["Original", "Checked", "CrossChecked", "SafetyChecked", "Approved", "Used"]
+            },
+            "validFrom": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Valid from date/time"
+            },
+            "validTo": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Valid to date/time"
+            },
+            "vesselName": {
+              "type": "string",
+              "description": "Name of the vessel"
+            },
+            "vesselIMO": {
+              "type": "string",
+              "pattern": "^[0-9]{7}$",
+              "description": "IMO number of the vessel"
+            },
+            "vesselVoyage": {
+              "type": "string",
+              "description": "Voyage number"
+            },
+            "vesselDisplacement": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Vessel displacement in metric tons"
+            },
+            "vesselCargo": {
+              "type": "string",
+              "description": "Cargo type"
+            },
+            "vesselDraft": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Vessel draft in meters"
+            },
+            "vesselAirDraft": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Vessel air draft in meters"
+            },
+            "vesselBeam": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Vessel beam in meters"
+            },
+            "vesselLength": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Vessel length in meters"
+            },
+            "optimizationMethod": {
+              "type": "string",
+              "description": "Optimization method used"
+            },
+            "extensions": {
+              "type": "object",
+              "description": "Vendor-specific extensions"
+            }
+          }
+        },
+        "waypoints": {
+          "type": "array",
+          "description": "List of waypoints",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "position"],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Waypoint ID",
+                "minimum": 0
+              },
+              "revision": {
+                "type": "integer",
+                "description": "Revision number",
+                "minimum": 0
+              },
+              "name": {
+                "type": "string",
+                "description": "Waypoint name"
+              },
+              "position": {
+                "type": "object",
+                "required": ["lat", "lon"],
+                "properties": {
+                  "lat": {
+                    "type": "number",
+                    "description": "Latitude in decimal degrees",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "description": "Longitude in decimal degrees",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                }
+              },
+              "geometryType": {
+                "type": "string",
+                "description": "Type of leg geometry",
+                "enum": ["Loxodrome", "Orthodrome"],
+                "default": "Loxodrome"
+              },
+              "turnRadius": {
+                "type": "number",
+                "description": "Turn radius in nautical miles",
+                "minimum": 0
+              },
+              "portXTE": {
+                "type": "number",
+                "description": "Port cross track error in nautical miles",
+                "minimum": 0
+              },
+              "starboardXTE": {
+                "type": "number",
+                "description": "Starboard cross track error in nautical miles",
+                "minimum": 0
+              },
+              "safetyContour": {
+                "type": "number",
+                "description": "Safety contour depth in meters",
+                "minimum": 0
+              },
+              "safetyDepth": {
+                "type": "number",
+                "description": "Safety depth in meters",
+                "minimum": 0
+              },
+              "speed": {
+                "type": "number",
+                "description": "Speed in knots",
+                "minimum": 0
+              },
+              "speedMin": {
+                "type": "number",
+                "description": "Minimum speed in knots",
+                "minimum": 0
+              },
+              "speedMax": {
+                "type": "number",
+                "description": "Maximum speed in knots",
+                "minimum": 0
+              },
+              "eta": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Estimated time of arrival"
+              },
+              "etd": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Estimated time of departure"
+              },
+              "legInfo": {
+                "type": "object",
+                "description": "Leg-specific information"
+              },
+              "extensions": {
+                "type": "object",
+                "description": "Vendor-specific extensions"
+              }
+            }
+          }
+        },
+        "schedules": {
+          "type": "array",
+          "description": "Schedule information",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer"},
+              "name": {"type": "string"},
+              "schedule": {"type": "array"}
+            }
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "description": "Route-level extensions"
+        }
+      }
+    }
+  }
+}

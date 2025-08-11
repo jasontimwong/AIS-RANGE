@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "route_id": "route_sf_tss_20250811_roundtrip",
+  "waypoints": [
+    {"lat": 37.70, "lon": -122.85},
+    {"lat": 37.75, "lon": -122.60},
+    {"lat": 37.80, "lon": -122.37}
+  ],
+  "validation_report": {
+    "clause_refs": [
+      {"standard": "COLREG", "clause": "Rule 10", "status": "COMPLIANT", "description": "TSS compliance verified"},
+      {"standard": "IMO MSC.232(82)", "clause": "4.7.1", "status": "COMPLIANT", "description": "Route planning standards met"},
+      {"standard": "IHO S-57", "clause": "TSSLPT", "status": "COMPLIANT", "description": "Traffic separation scheme lanes followed"},
+      {"standard": "IEC 61174", "clause": "RTZ", "status": "COMPLIANT", "description": "RTZ format roundtrip verified"}
+    ],
+    "min_ukc_m": 2.5
+  },
+  "rtz_validation": {
+    "import_success": true,
+    "export_success": true,
+    "roundtrip_hash_match": true,
+    "schema_valid": true
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Data Provenance v1",
+  "description": "数据谱系规范 - 用于验证海事数据真实性",
+  "type": "object",
+  "required": ["scenario_id", "datasets", "feature_flags", "required_real"],
+  "properties": {
+    "scenario_id": {
+      "type": "string",
+      "description": "场景标识符",
+      "pattern": "^[A-Z_]+$"
+    },
+    "scenario_name": {
+      "type": "string",
+      "description": "场景名称"
+    },
+    "feature_flags": {
+      "type": "object",
+      "description": "特性开关配置",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "required_real": {
+      "type": "array",
+      "description": "必须使用真实数据的项目",
+      "items": {
+        "type": "string",
+        "enum": ["ENC", "TSS", "VESSEL", "RTZ", "S102", "S111", "S124", "S104", "AIS"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "datasets": {
+      "type": "array",
+      "description": "数据集列表",
+      "items": {
+        "type": "object",
+        "required": ["type", "path"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "数据类型",
+            "enum": [
+              "ENC_S57", "ENC_S101", "S102", "S111", "S124", "S104",
+              "RTZ_SCHEMA", "AIS_REPLAY", "WEATHER", "TIDE"
+            ]
+          },
+          "path": {
+            "type": ["string", "null"],
+            "description": "文件路径"
+          },
+          "hash": {
+            "type": ["string", "null"],
+            "description": "SHA256哈希值（前16位）",
+            "pattern": "^[a-f0-9]{16}$"
+          },
+          "size": {
+            "type": ["integer", "null"],
+            "description": "文件大小（字节）",
+            "minimum": 0
+          },
+          "source": {
+            "type": "string",
+            "description": "数据来源",
+            "enum": ["NOAA", "IHO", "HO", "VTS", "OFFICIAL", "MOCK", "UNKNOWN"]
+          },
+          "metadata": {
+            "type": "object",
+            "description": "额外元数据",
+            "properties": {
+              "producer": {"type": "string"},
+              "date": {"type": "string", "format": "date"},
+              "version": {"type": "string"},
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "min_lon": {"type": "number"},
+                  "min_lat": {"type": "number"},
+                  "max_lon": {"type": "number"},
+                  "max_lat": {"type": "number"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ship_model": {
+      "type": "object",
+      "description": "船舶模型参数",
+      "properties": {
+        "length_m": {
+          "type": ["number", "null"],
+          "description": "船长（米）",
+          "minimum": 0
+        },
+        "beam_m": {
+          "type": ["number", "null"],
+          "description": "船宽（米）",
+          "minimum": 0
+        },
+        "draft_m": {
+          "type": ["number", "null"],
+          "description": "吃水（米）",
+          "minimum": 0
+        },
+        "min_turn_radius_nm": {
+          "type": ["number", "null"],
+          "description": "最小转弯半径（海里）",
+          "minimum": 0
+        },
+        "displacement_t": {
+          "type": ["number", "null"],
+          "description": "排水量（吨）",
+          "minimum": 0
+        },
+        "source": {
+          "type": "string",
+          "description": "数据来源（船检证书、型谱等）"
+        }
+      }
+    },
+    "plan_request_path": {
+      "type": "string",
+      "description": "规划请求文件路径"
+    },
+    "plan_response_path": {
+      "type": "string",
+      "description": "规划响应文件路径"
+    },
+    "evidence_pack_path": {
+      "type": "string",
+      "description": "证据包目录路径"
+    },
+    "validation": {
+      "type": "object",
+      "description": "验证结果",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "validator_version": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "WARN"]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {"type": "string"},
+              "status": {"type": "string", "enum": ["PASS", "FAIL", "WARN", "INFO"]},
+              "detail": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

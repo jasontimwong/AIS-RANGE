@@ -1,0 +1,60 @@
+scenario_id: CASE_SF_TSS
+scenario_name: San Francisco TSS – End-to-End Validation
+feature_flags:
+  four_d_planner: true
+  s104_tides: true
+  eta_optimizer: true
+  ukc_plugin: true
+  ui_ecdis: true
+  ui_debug_layers: true
+  colreg_rules: false
+  s101_adapter: false
+  s102_adapter: true
+  s111_currents: true
+  s124_warnings: true
+  safety_shield: true
+  tile_management: true
+  version_management: true
+required_real:
+- ENC
+- TSS
+- VESSEL
+- RTZ
+datasets:
+- type: ENC_S57
+  path: data/enc/ENC_ROOT/US4CA60M/US4CA60M.000
+  hash: 16e608266a15e465
+  size: 1514151
+- type: ENC_S101
+  path: null
+  hash: null
+  size: 0
+- type: S102
+  path: datasets/s102/mock_s102_grid.csv
+  hash: d65b871f2239d8b4
+  size: 14
+- type: S111
+  path: datasets/s111/mock_currents.csv
+  hash: 9bfb915d0a84b5e2
+  size: 12
+- type: S124
+  path: datasets/s124/mock_warnings.json
+  hash: dbaab3ec7d81e717
+  size: 16
+- type: S104
+  path: null
+  hash: null
+  size: 0
+- type: RTZ_SCHEMA
+  path: schemas/rtz_schema.json
+  hash: a11ca584932bbcaa
+  size: 7159
+ship_model:
+  length_m: 289.0
+  beam_m: 32.3
+  draft_m: 12.5
+  min_turn_radius_nm: 0.75
+plan_request_path: artifacts/case_sf_tss/plan_request.json
+plan_response_path: artifacts/case_sf_tss/plan_resp_1.json
+evidence_pack_path: artifacts/case_sf_tss/evidence_pack
+

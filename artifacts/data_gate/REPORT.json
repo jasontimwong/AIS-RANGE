@@ -1,0 +1,81 @@
+{
+  "scenario": "CASE_SF_TSS",
+  "scenario_name": "San Francisco TSS – End-to-End Validation",
+  "timestamp": "planner",
+  "checks": [
+    {
+      "item": "ENC",
+      "status": "PASS",
+      "detail": "S-57: US4CA60M.000 (1.4MB)",
+      "required": true,
+      "passed": true
+    },
+    {
+      "item": "TSS",
+      "status": "PASS",
+      "detail": "发现2条TSS/Rule 10相关验证\n  • COLREG Rule 10\n  • IHO S-57 TSSLPT",
+      "required": true,
+      "passed": true
+    },
+    {
+      "item": "VESSEL",
+      "status": "PASS",
+      "detail": "✓ 长度: 289.0m | ✓ 宽度: 32.3m | ✓ 吃水: 12.5m | ✓ 转弯半径: 0.75nm",
+      "required": true,
+      "passed": true
+    },
+    {
+      "item": "RTZ",
+      "status": "PASS",
+      "detail": "Schema: 存在 | 往返测试: 一致",
+      "required": true,
+      "passed": true
+    },
+    {
+      "item": "S102",
+      "status": "WARN",
+      "detail": "检测到mock/样例数据: mock_s102_grid.csv",
+      "required": false,
+      "passed": true
+    },
+    {
+      "item": "S111",
+      "status": "WARN",
+      "detail": "检测到mock/样例数据: mock_currents.csv",
+      "required": false,
+      "passed": true
+    },
+    {
+      "item": "S124",
+      "status": "WARN",
+      "detail": "检测到mock/样例数据: mock_warnings.json",
+      "required": false,
+      "passed": true
+    },
+    {
+      "item": "S104",
+      "status": "INFO",
+      "detail": "未使用（可选）",
+      "required": false,
+      "passed": true
+    }
+  ],
+  "statistics": {
+    "total": 8,
+    "required": 4,
+    "optional": 4,
+    "passed": 8,
+    "failed": 0,
+    "warned": 3
+  },
+  "summary": {
+    "must_pass": [
+      "ENC",
+      "TSS",
+      "VESSEL",
+      "RTZ"
+    ],
+    "result": "PASS",
+    "message": "所有必须项通过"
+  }
+}

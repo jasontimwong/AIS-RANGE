@@ -1,0 +1,63 @@
+mandatory:
+- id: ECDIS.SAFETY_CONTOUR
+  std: IMO MSC.232/MSC.530
+  desc: 安全等深线/浅水不可入
+- id: ECDIS.NOGO_OBSTACLE
+  std: IMO/IEC/IHO
+  desc: 危险物/禁航区避让
+- id: TSS.RULE10.LANE_FOLLOW
+  std: COLREG Rule 10
+  desc: 分道制车道内通行
+- id: TSS.RULE10.NO_SEP_ZONE
+  std: COLREG Rule 10
+  desc: 禁止穿越分隔区
+- id: SPD.LIMITS
+  std: S-124/地方规则
+  desc: 限速区不超速
+- id: CPA.TCPA.THRESH
+  std: COLREG/公司策略
+  desc: 最小 CPA/TCPA 满足阈值
+- id: RTZ.IO.ROUNDTRIP
+  std: IEC 61174/PAS
+  desc: RTZ 导出→导入一致
+colreg:
+- id: COLREG.RULE7
+  std: COLREG
+  desc: 碰撞危险评估
+- id: COLREG.RULE8
+  std: COLREG
+  desc: 避免碰撞措施
+- id: COLREG.RULE10
+  std: COLREG
+  desc: 分道制
+- id: COLREG.RULE13
+  std: COLREG
+  desc: 追越
+- id: COLREG.RULE14
+  std: COLREG
+  desc: 对遇
+- id: COLREG.RULE15
+  std: COLREG
+  desc: 交叉
+- id: COLREG.RULE16
+  std: COLREG
+  desc: 让路船动作
+- id: COLREG.RULE17
+  std: COLREG
+  desc: 直航船动作
+- id: COLREG.RULE19
+  std: COLREG
+  desc: 能见度不良
+optional:
+- id: UKC.MIN_CLEARANCE
+  std: 内部/公司
+  desc: UKC≥阈值
+- id: S102.CONSISTENCY
+  std: IHO S-102
+  desc: 与 S-57 可行域一致
+- id: S111.EFFECT
+  std: IHO S-111
+  desc: 流场影响 ETA/代价可解释
+- id: S124.APPLIED
+  std: IHO S-124
+  desc: 警告生效并受检

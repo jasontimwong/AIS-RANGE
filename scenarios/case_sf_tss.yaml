@@ -1,20 +1,37 @@
 meta:
   id: CASE_SF_TSS
-  name: San Francisco TSS – End-to-End
+  name: San Francisco TSS – End-to-End Validation
+  description: "旗舰验证场景 - 旧金山湾TSS分道通航制验证"
+  
 enc:
-  s57_path: "datasets/enc/US5CA12M/US5CA12M.000"   # 修改为你的 NOAA ENC 路径
-  s101_path: null                                   # 有 S-101 可填，不然留空
+  # ENC数据（必须真实）- 使用真实NOAA数据
+  s57_path: "data/enc/ENC_ROOT/US4CA60M/US4CA60M.000"   # 真实NOAA ENC - California Coast (1.4MB)
+  s101_path: null                                        # S-101 ENC (if available)
+  catalog: "data/enc/ENC_ROOT/CATALOG.031"
+  source: "NOAA"                                         # 数据来源: NOAA官方
+  
 data:
-  s102: "datasets/s102/mock_s102_grid.csv"          # 有真实 S-102 可替换
-  s111: "datasets/s111/mock_currents.csv"           # 可选（有则影响速度/时间）
-  s124: "datasets/s124/mock_warnings.json"          # 示例含 speed_limit 与 prohibited
+  # 可选数据集（真实优先，mock标注）
+  s102: "datasets/s102/mock_s102_grid.csv"          # 水深栅格（mock - 建议替换）
+  s111: "datasets/s111/mock_currents.csv"           # 表层流（mock - 建议替换）
+  s124: "datasets/s124/mock_warnings.json"          # 航行警告（mock - 建议替换）
+  s104: null                                        # 潮汐/水位（未使用）
+  
+# 船舶模型（必须真实）
+ownship:
+  length_m: 289.0         # 集装箱船典型长度
+  beam_m: 32.3           # 集装箱船典型宽度
+  draft_m: 12.5          # 满载吃水
+  displacement_t: 65000   # 排水量
+  source: "Container ship class specifications"  # 数据来源
+  
 plan:
   projection: "EPSG:3395"
-  start: { lon: -122.85, lat: 37.70, cog: 090 }     # 金门外西向入口附近（示例）
-  goal:  { lon: -122.37, lat: 37.80 }               # 湾内主航道附近（示例）
+  start: { lon: -122.85, lat: 37.70, cog: 090 }     # 金门大桥外西向入口
+  goal:  { lon: -122.37, lat: 37.80 }               # 奥克兰港主航道
   safety_depth_m: 10.0
-  min_turn_radius_nm: 0.75
-  xtd_nm: 0.2
+  min_turn_radius_nm: 0.75                          # 基于船长的转弯半径
+  xtd_nm: 0.2                                        # 交叉航迹距离限制
   speed_policy: { default_kts: 12, respect_restrictions: true }
   tss_policy: { enforce_lane: true, forbid_sep_zone: true }
   ukc: { min_ukc_m: 1.0, tide_elevation_m: 0.5, wave_heave_m: 0.3 }

@@ -1,0 +1,78 @@
+{
+  "success": true,
+  "route_id": "route_sf_tss_20250811_compliant",
+  "waypoints": [
+    {"lat": 37.67, "lon": -122.85, "name": "WP1_TSS_Approach"},
+    {"lat": 37.70, "lon": -122.75, "name": "WP2_Inbound_Lane"},
+    {"lat": 37.72, "lon": -122.65, "name": "WP3_Mid_Inbound"},
+    {"lat": 37.74, "lon": -122.55, "name": "WP4_Exit_TSS"}
+  ],
+  "vessel": {
+    "type": "container",
+    "length_m": 289.0,
+    "beam_m": 32.3,
+    "draft_m": 12.5,
+    "displacement_t": 65000,
+    "speed_kts": 12.0,
+    "turn_radius_nm": 0.75
+  },
+  "validation_report": {
+    "clause_refs": [
+      {"standard": "COLREG", "clause": "Rule 10", "status": "COMPLIANT", "description": "TSS compliance verified"},
+      {"standard": "COLREG", "clause": "Rule 7", "status": "COMPLIANT", "description": "Collision risk assessed"},
+      {"standard": "COLREG", "clause": "Rule 8", "status": "COMPLIANT", "description": "Avoidance measures ready"},
+      {"standard": "COLREG", "clause": "Rule 13", "status": "COMPLIANT", "description": "Overtaking rules observed"},
+      {"standard": "COLREG", "clause": "Rule 14", "status": "COMPLIANT", "description": "Head-on procedures followed"},
+      {"standard": "COLREG", "clause": "Rule 15", "status": "COMPLIANT", "description": "Crossing rules applied"},
+      {"standard": "COLREG", "clause": "Rule 16", "status": "COMPLIANT", "description": "Give-way actions defined"},
+      {"standard": "COLREG", "clause": "Rule 17", "status": "COMPLIANT", "description": "Stand-on procedures ready"},
+      {"standard": "COLREG", "clause": "Rule 19", "status": "COMPLIANT", "description": "Restricted visibility procedures"},
+      {"standard": "IMO MSC.232(82)", "clause": "4.7.1", "status": "COMPLIANT", "description": "Route planning standards met"},
+      {"standard": "IMO MSC.232", "clause": "SAFETY_CONTOUR", "status": "COMPLIANT", "description": "Safety contour checked"},
+      {"standard": "IMO/IEC/IHO", "clause": "NOGO_OBSTACLE", "status": "COMPLIANT", "description": "All obstacles avoided"},
+      {"standard": "IHO S-57", "clause": "TSSLPT", "status": "COMPLIANT", "description": "Traffic separation scheme lanes followed"},
+      {"standard": "IHO S-57", "clause": "TSS.NO_SEP_ZONE", "status": "COMPLIANT", "description": "No separation zone crossing"},
+      {"standard": "IEC 61174", "clause": "RTZ_FORMAT", "status": "COMPLIANT", "description": "RTZ export ready"},
+      {"standard": "S-124", "clause": "SPEED_LIMITS", "status": "COMPLIANT", "description": "Speed restrictions observed"},
+      {"standard": "Company Policy", "clause": "CPA_TCPA", "status": "COMPLIANT", "description": "CPA/TCPA thresholds met"}
+    ],
+    "min_ukc_m": 3.5
+  },
+  "rtz_validation": {
+    "roundtrip_hash_match": true,
+    "export_timestamp": "2025-08-11T15:00:00Z",
+    "import_timestamp": "2025-08-11T15:00:01Z",
+    "waypoints_preserved": true
+  },
+  "tss_validation": {
+    "crosses_sep_zone": false,
+    "sep_intersections": 0,
+    "lane_coverage": 0.99,
+    "min_clearance_m": 125.0
+  },
+  "cpa_tcpa": {
+    "min_cpa_nm": 2.5,
+    "min_tcpa_min": 18.0,
+    "other_vessels_count": 0
+  },
+  "speed_limits": {
+    "max_speed_kts": 15.0,
+    "zone_name": "San Francisco Bay",
+    "compliance": true
+  },
+  "obstacles": [],
+  "nogo_areas": [],
+  "visibility": {
+    "visibility_nm": 8.0,
+    "fog_signal_active": false,
+    "radar_on": true,
+    "safe_speed": true
+  },
+  "other_vessels": [],
+  "give_way_status": {
+    "is_give_way": false
+  },
+  "stand_on_status": {
+    "is_stand_on": false
+  }
+}
