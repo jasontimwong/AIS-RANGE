@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug UI</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0b0f12;
+            color: #d8dee9;
+            padding: 20px;
+        }
+        .status { 
+            background: #2e3440; 
+            padding: 15px; 
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .success { color: #a3be8c; }
+        .error { color: #bf616a; }
+        .info { color: #88c0d0; }
+        iframe {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #3b4252;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 ECDIS UI Debug Console</h1>
+    
+    <div class="status">
+        <h2>Test Results:</h2>
+        <div id="results">Testing...</div>
+    </div>
+    
+    <div class="status">
+        <h2>Live UI Preview:</h2>
+        <iframe id="ui-frame" src="http://localhost:3001/ui/"></iframe>
+    </div>
+    
+    <script>
+        async function debugUI() {
+            const results = [];
+            
+            // Test Vite Dev Server
+            try {
+                const res = await fetch('http://localhost:3001/ui/');
+                results.push(`✅ Vite dev server: ${res.status === 200 ? 'Running' : 'Error: ' + res.status}`);
+            } catch (e) {
+                results.push(`❌ Vite dev server: ${e.message}`);
+            }
+            
+            // Test Backend
+            try {
+                const res = await fetch('http://localhost:8000/status');
+                const data = await res.json();
+                results.push(`✅ Backend API: ${data.status}`);
+            } catch (e) {
+                results.push(`❌ Backend API: ${e.message}`);
+            }
+            
+            // Test ENC endpoint
+            try {
+                const res = await fetch('http://localhost:8000/enc/lite');
+                const data = await res.json();
+                results.push(`✅ ENC data: ${data.coast ? 'Available' : 'Not found'}`);
+            } catch (e) {
+                results.push(`❌ ENC data: ${e.message}`);
+            }
+            
+            // Display results
+            document.getElementById('results').innerHTML = results.map(r => 
+                `<div class="${r.includes('✅') ? 'success' : 'error'}">${r}</div>`
+            ).join('');
+            
+            // Try to access iframe content
+            setTimeout(() => {
+                try {
+                    const iframe = document.getElementById('ui-frame');
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const rootEl = iframeDoc.getElementById('root');
+                    
+                    if (rootEl) {
+                        const hasContent = rootEl.innerHTML.trim().length > 0;
+                        results.push(hasContent ? 
+                            '✅ React app rendered content' : 
+                            '⚠️ Root element exists but no content rendered'
+                        );
+                    } else {
+                        results.push('❌ Root element not found in iframe');
+                    }
+                } catch (e) {
+                    results.push(`ℹ️ Cannot access iframe content (CORS)`);
+                }
+                
+                // Update display
+                document.getElementById('results').innerHTML = results.map(r => 
+                    `<div class="${r.includes('✅') ? 'success' : r.includes('❌') ? 'error' : 'info'}">${r}</div>`
+                ).join('');
+            }, 2000);
+        }
+        
+        window.onload = debugUI;
+    </script>
+</body>
+</html>

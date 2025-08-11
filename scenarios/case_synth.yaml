@@ -1,0 +1,18 @@
+meta: { id: CASE_SYNTH, name: Synthetic Harbor – Minimal E2E }
+enc:  { s57_path: null, s101_path: null }   # 不依赖真实 ENC
+data:
+  s102: "datasets/s102/mock_s102_grid.csv"
+  s111: "datasets/s111/mock_currents.csv"
+  s124: "datasets/s124/mock_warnings.json"
+plan:
+  projection: "EPSG:3395"
+  start: { lon: 0.000, lat: 0.010 }
+  goal:  { lon: 0.020, lat: 0.020 }
+  safety_depth_m: 10.0
+  min_turn_radius_nm: 0.50
+  xtd_nm: 0.2
+  speed_policy: { default_kts: 12, respect_restrictions: true }
+  tss_policy:   { enforce_lane: false, forbid_sep_zone: false }
+  ukc: { min_ukc_m: 1.0, tide_elevation_m: 0.5, wave_heave_m: 0.3 }
+traffic: []
+seed: 42

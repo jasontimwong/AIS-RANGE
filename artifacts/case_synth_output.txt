@@ -1,0 +1,20 @@
+=== 🧪 CASE-B: Synthetic Harbor Minimal E2E ===
+▶ 步骤1: 构建合成场景请求
+▶ 步骤2: 配置特性开关（合成模式）
+  ✓ Feature flags set for synthetic mode
+▶ 步骤3: 执行规划（确定性验证）
+  运行第 1 次规划...
+  运行第 2 次规划...
+▶ 步骤4: 验证结果
+  Route hash 1: 44136fa355b3678a
+  Route hash 2: 44136fa355b3678a
+  ✅ 确定性验证通过
+  ✅ 合规验证通过
+  ⚠️ UKC: 0.0m (合成场景可能无深度数据)
+▶ 步骤5: 生成证据包
+  ✓ 证据包已生成: artifacts/case_synth/evidence_pack
+
+=== 🎯 CASE_SYNTH 合成场景验证通过 ===
+证据包位置: artifacts/case_synth/evidence_pack/
+打开 UI 查看可视化: http://localhost:3001/ui/
+

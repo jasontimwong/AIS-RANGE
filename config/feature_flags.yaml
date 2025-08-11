@@ -3,3 +3,13 @@ feature_flags:
   s104_tides: true
   eta_optimizer: true
   ukc_plugin: true
+  ui_ecdis: true
+  ui_debug_layers: true
+  colreg_rules: false
+  s101_adapter: false
+  s102_adapter: true
+  s111_currents: true
+  s124_warnings: true
+  safety_shield: true
+  tile_management: true
+  version_management: true

@@ -1,0 +1,24 @@
+meta:
+  id: CASE_SF_TSS
+  name: San Francisco TSS – End-to-End
+enc:
+  s57_path: "datasets/enc/US5CA12M/US5CA12M.000"   # 修改为你的 NOAA ENC 路径
+  s101_path: null                                   # 有 S-101 可填，不然留空
+data:
+  s102: "datasets/s102/mock_s102_grid.csv"          # 有真实 S-102 可替换
+  s111: "datasets/s111/mock_currents.csv"           # 可选（有则影响速度/时间）
+  s124: "datasets/s124/mock_warnings.json"          # 示例含 speed_limit 与 prohibited
+plan:
+  projection: "EPSG:3395"
+  start: { lon: -122.85, lat: 37.70, cog: 090 }     # 金门外西向入口附近（示例）
+  goal:  { lon: -122.37, lat: 37.80 }               # 湾内主航道附近（示例）
+  safety_depth_m: 10.0
+  min_turn_radius_nm: 0.75
+  xtd_nm: 0.2
+  speed_policy: { default_kts: 12, respect_restrictions: true }
+  tss_policy: { enforce_lane: true, forbid_sep_zone: true }
+  ukc: { min_ukc_m: 1.0, tide_elevation_m: 0.5, wave_heave_m: 0.3 }
+traffic:
+  # 可选：一个交汇目标用于 COLREG 检验（Rule 10 + crossing）
+  - { id: "MMSI730000001", lon: -122.65, lat: 37.78, cog: 180, sog: 14 }
+seed: 42

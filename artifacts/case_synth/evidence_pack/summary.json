@@ -1,0 +1,12 @@
+{
+  "case_id": "CASE_SYNTH",
+  "timestamp": "2025-08-11T12:36:39.813174",
+  "route_points": 0,
+  "clause_summary": {
+    "total": 0,
+    "compliant": 0,
+    "warn": 0,
+    "fail": 0
+  },
+  "min_ukc_m": 0
+}

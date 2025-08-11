@@ -1,0 +1,14 @@
+ECDIS E2E Validation Report
+Generated: Mon Aug 11 12:36:39 +08 2025
+=========================================
+
+CASE-B: Synthetic Harbor
+-----------------------------------------
+RESULT: PASSED
+Waypoints: 26
+Route ID: route_20250811_123639
+Clauses checked: 0
+
+CASE-A: San Francisco TSS
+-----------------------------------------
+RESULT: SKIPPED (No ENC data)

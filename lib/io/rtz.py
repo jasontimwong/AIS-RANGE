@@ -13,6 +13,8 @@ import json
 import logging
 from pathlib import Path
 import uuid
+import numpy as np
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +91,17 @@ class RTZWaypoint:
         wp_id = elem.get("id", "")
         name = elem.get("name", "")
         
-        # Get position
-        pos_elem = elem.find(".//position")
-        lat = float(pos_elem.get("lat", 0))
-        lon = float(pos_elem.get("lon", 0))
+        # Get position (handle namespace)
+        pos_elem = elem.find(".//position") or elem.find(".//{http://www.cirm.org/RTZ/1/2}position")
+        if pos_elem is None:
+            pos_elem = elem.find("position") or elem.find("{http://www.cirm.org/RTZ/1/2}position")
+        
+        if pos_elem is not None:
+            lat = float(pos_elem.get("lat", 0))
+            lon = float(pos_elem.get("lon", 0))
+        else:
+            lat = 0.0
+            lon = 0.0
         
         wp = cls(id=wp_id, name=name, lat=lat, lon=lon)
         
@@ -173,16 +182,29 @@ class RTZRoute:
         """Parse RTZ route from XML string."""
         root = ET.fromstring(xml_content)
         
-        # Get route info
-        route_info_elem = root.find(".//routeInfo")
-        route_name = route_info_elem.get("routeName", "Unnamed Route")
-        route_status = route_info_elem.get("routeStatus", "PlannedForVoyage")
+        # Get route info (handle both with and without namespace)
+        route_info_elem = root.find(".//routeInfo") or root.find(".//{http://www.cirm.org/RTZ/1/2}routeInfo")
+        if route_info_elem is None:
+            # Fallback: look for routeInfo as direct child
+            route_info_elem = root.find("routeInfo") or root.find("{http://www.cirm.org/RTZ/1/2}routeInfo")
         
-        # Parse waypoints
+        if route_info_elem is not None:
+            route_name = route_info_elem.get("routeName", "Unnamed Route")
+            route_status = route_info_elem.get("routeStatus", "PlannedForVoyage")
+        else:
+            route_name = "Unnamed Route"
+            route_status = "PlannedForVoyage"
+        
+        # Parse waypoints (handle both with and without namespace)
         waypoints = []
-        waypoints_elem = root.find(".//waypoints")
+        waypoints_elem = root.find(".//waypoints") or root.find(".//{http://www.cirm.org/RTZ/1/2}waypoints")
+        if waypoints_elem is None:
+            waypoints_elem = root.find("waypoints") or root.find("{http://www.cirm.org/RTZ/1/2}waypoints")
+        
         if waypoints_elem is not None:
-            for wp_elem in waypoints_elem.findall("waypoint"):
+            # Find waypoint elements (handle namespace)
+            wp_elements = waypoints_elem.findall("waypoint") or waypoints_elem.findall("{http://www.cirm.org/RTZ/1/2}waypoint")
+            for wp_elem in wp_elements:
                 waypoints.append(RTZWaypoint.from_xml_element(wp_elem))
         
         route = cls(

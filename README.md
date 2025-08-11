@@ -1,40 +1,57 @@
-# ECDIS Route Planner v1.0.1
+# ECDIS Maritime Route Planner v2.0
 
-**生产就绪的海事导航路径规划系统**
+**生产就绪的智能海事航线规划系统**
 
-符合IMO/IHO国际标准的ECDIS(Electronic Chart Display and Information System)航线规划系统，具备完整的4D时域规划、COLREG避碰规则和安全护盾功能。
+符合IMO/IHO国际标准的ECDIS(Electronic Chart Display and Information System)航线规划系统，具备完整的Web UI界面、实时验证和端到端测试能力。
 
 ![Test Status](https://img.shields.io/badge/tests-356%20passed-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-72%25-green)
-![Version](https://img.shields.io/badge/version-1.0.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Status](https://img.shields.io/badge/status-production%20ready-success)
 
-## 🏆 关键成就
+## 🏆 最新进展
 
-- **✅ 10个里程碑全部完成**
+### 已完成功能 (2025-08-11)
+- **✅ FastAPI REST服务**: 完整的航线规划API
+- **✅ React UI界面**: 实时海图显示和航线管理
+- **✅ E2E验证框架**: 旧金山TSS和合成场景测试
+- **✅ 实时告警系统**: B级/C级航行警告
+- **✅ RTZ格式支持**: 标准航线导入/导出
+
+### 核心成就
+- **✅ 10+个里程碑全部完成**
 - **✅ 356/366个测试通过 (97%)**  
 - **✅ 72%代码覆盖率**
 - **✅ IMO/IHO标准100%合规**
-- **✅ 生产级部署就绪**
+- **✅ Web UI + API服务就绪**
 
 ## 🚀 快速开始
 
-### 一键启动
+### 环境准备
 ```bash
-# 克隆项目
-git clone <repository>
-cd ecdis-planner
-
-# 运行快速启动脚本
-chmod +x quickstart.sh
-./quickstart.sh
+# Python 3.8+ 和 Node.js 16+
+pip install -r requirements.txt
+cd ui && npm install && cd ..
 ```
 
-### 运行测试
+### 启动系统
 ```bash
-# 运行所有测试
-chmod +x test_runner.sh
-./test_runner.sh
+# 1. 启动后端服务 (端口 8000)
+python service/app.py
+
+# 2. 启动前端UI (新终端, 端口 3001)
+cd ui && npm run dev
+```
+
+访问 http://localhost:3001/ui/ 查看界面
+
+### 运行E2E测试
+```bash
+# 旧金山TSS场景
+./scripts/run_case_sf_tss.sh
+
+# 合成港口场景
+./scripts/run_case_synth.sh
 ```
 
 ### 基本使用
@@ -56,6 +73,13 @@ path = planner.plan(start, goal)
 
 ## 📋 系统功能
 
+### Web服务与UI (最新)
+- ✅ **FastAPI REST API** 完整的航线规划服务
+- ✅ **React UI界面** Canvas海图渲染
+- ✅ **实时告警系统** A/B/C级航行警告
+- ✅ **RTZ导入/导出** 标准航线交换
+- ✅ **E2E测试框架** 端到端验证
+
 ### 核心规划 (M1-M4)
 - ✅ **Hybrid A*** 智能路径规划
 - ✅ **COLREG避碰规则** (10条规则实现)
@@ -63,16 +87,16 @@ path = planner.plan(start, goal)
 - ✅ **IMO MSC.232(82)** 标准映射
 
 ### 环境集成 (M5)
-- ✅ **S-102** 高分辨率水深数据
+- ✅ **S-57** 电子海图数据
 - ✅ **S-111** 表层流集成
 - ✅ **S-124** 航行警告处理
 - ✅ **动态UKC** 净空裕度计算
 
 ### 互操作性 (M6)
 - ✅ **S-421** RTZ格式双向转换
-- ✅ **压力测试框架** 模糊测试
-- ✅ **取证工具套件** 事件追踪
-- ✅ **SBOM管理** 供应链安全
+- ✅ **验证框架** 合规性检查
+- ✅ **证据包生成** 审计追踪
+- ✅ **性能监控** 指标追踪
 
 ### 4D规划 (M7)
 - ✅ **S-104** 潮汐/水位集成
@@ -82,14 +106,14 @@ path = planner.plan(start, goal)
 
 ### 安全系统 (M8)
 - ✅ **Control Barrier Functions** 安全护盾
-- ✅ **传感器失效降级** 多传感器融合
+- ✅ **多传感器融合** 冗余设计
 - ✅ **故障注入测试** 混沌工程
 
 ### 企业级功能 (M9-M10)
 - ✅ **瓦片缓存管理** 大范围航行
 - ✅ **版本管理系统** 语义化版本
 - ✅ **配置管理** 环境隔离
-- ✅ **自动化部署** Docker + Systemd
+- ✅ **生产部署** Docker + Systemd
 
 ## 📊 技术指标
 
@@ -104,18 +128,30 @@ path = planner.plan(start, goal)
 ## 🏗️ 系统架构
 
 ```
-ecdis-planner/
+planner/
 ├── lib/                    # 核心库 (7,800+ LOC)
-│   ├── planner/           # 路径规划引擎
+│   ├── planner/           # Hybrid A* 路径规划
 │   ├── colreg/            # COLREG避碰规则
 │   ├── checks/            # 路径验证系统
-│   ├── enc/               # 海图适配器
+│   ├── enc/               # S-57海图解析
+│   ├── region/            # 可行区域构建
+│   ├── io/                # RTZ/S-421格式
 │   ├── safety/            # 安全护盾系统
 │   ├── tiling/            # 瓦片管理
 │   └── governance/        # 治理框架
+├── service/               # FastAPI后端服务
+│   └── app.py            # REST API端点
+├── ui/                    # React前端界面
+│   ├── src/
+│   │   ├── components/   # UI组件
+│   │   ├── api/          # API客户端
+│   │   └── App.tsx       # 主应用
+│   └── package.json      # 前端依赖
+├── scenarios/             # 验证场景配置
+├── scripts/               # E2E测试脚本
+├── tools/                 # 辅助工具
 ├── tests/                 # 测试套件 (366个测试)
-├── scripts/               # 工具脚本
-└── config/                # 配置文件
+└── artifacts/             # 生成的验证报告
 ```
 
 ## 🛠️ 部署

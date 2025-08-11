@@ -1,0 +1,767 @@
+import React, { useEffect, useImperativeHandle, useRef } from "react";
+import { lonLatToXY, xyToLonLat, Viewport } from "../proj/mercator";
+
+export type LonLat = [number, number];
+
+type Props = { 
+  enc: any; 
+  route: LonLat[]; 
+  style?: React.CSSProperties; 
+};
+
+export type MapRef = { 
+  toggle(layer: string, on: boolean): void; 
+  zoomTo(bounds: [LonLat, LonLat]): void;
+};
+
+export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  const layers = useRef<Record<string, boolean>>({
+    enc: true, 
+    route: true, 
+    tss: true, 
+    s124: true
+  });
+  
+  const vp = useRef<Viewport>({
+    center: [0.015, 0.0075], // 居中显示示例区域
+    zoom: 12, 
+    width: 0, 
+    height: 0, 
+    dpr: window.devicePixelRatio || 1,
+  });
+  
+  const state = useRef({
+    drag: false, 
+    last: [0, 0] as [number, number],
+    needsRedraw: true
+  });
+
+  useImperativeHandle(ref, () => ({
+    toggle: (k, on) => { 
+      layers.current[k] = on; 
+      state.current.needsRedraw = true;
+      requestRedraw();
+    },
+    zoomTo: (bounds) => {
+      const [[minLon, minLat], [maxLon, maxLat]] = bounds;
+      const centerLon = (minLon + maxLon) / 2;
+      const centerLat = (minLat + maxLat) / 2;
+      vp.current.center = [centerLon, centerLat];
+      
+      // 计算合适的缩放级别
+      const lonRange = maxLon - minLon;
+      const latRange = maxLat - minLat;
+      const range = Math.max(lonRange, latRange);
+      vp.current.zoom = Math.max(2, Math.min(18, 16 - Math.log2(range * 100)));
+      
+      state.current.needsRedraw = true;
+      requestRedraw();
+    }
+  }));
+
+  const requestRedraw = () => {
+    // 取消之前的动画帧请求，确保只有最新的请求生效
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    animationFrameRef.current = requestAnimationFrame(() => {
+      animationFrameRef.current = null;
+      if (state.current.needsRedraw) {
+        const startTime = performance.now();
+        draw();
+        state.current.needsRedraw = false;
+        
+        // 性能监控：确保60fps (16.67ms per frame)
+        const frameTime = performance.now() - startTime;
+        if (frameTime > 16.67) {
+          console.warn(`Frame time: ${frameTime.toFixed(2)}ms (target: <16.67ms for 60fps)`);
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    const cvs = canvasRef.current!;
+    
+    const resize = () => {
+      const rect = cvs.getBoundingClientRect();
+      vp.current.width = rect.width;
+      vp.current.height = rect.height;
+      cvs.width = Math.floor(rect.width * vp.current.dpr);
+      cvs.height = Math.floor(rect.height * vp.current.dpr);
+      state.current.needsRedraw = true;
+      requestRedraw();
+    };
+    
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(cvs);
+
+    // 鼠标滚轮缩放
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.5 : 0.5;
+      vp.current.zoom = Math.max(2, Math.min(20, vp.current.zoom + delta));
+      state.current.needsRedraw = true;
+      requestRedraw();
+    };
+
+    // 鼠标拖拽
+    const onDown = (e: MouseEvent) => {
+      state.current.drag = true;
+      state.current.last = [e.clientX, e.clientY];
+      cvs.style.cursor = 'grabbing';
+    };
+
+    const onMove = (e: MouseEvent) => {
+      if (!state.current.drag) return;
+      
+      const dx = (e.clientX - state.current.last[0]) / vp.current.dpr;
+      const dy = (e.clientY - state.current.last[1]) / vp.current.dpr;
+      const scale = Math.pow(2, vp.current.zoom) * 256;
+      
+      vp.current.center[0] -= (dx / scale) * 360;
+      vp.current.center[1] += (dy / scale) * 180;
+      
+      state.current.last = [e.clientX, e.clientY];
+      state.current.needsRedraw = true;
+      requestRedraw();
+    };
+
+    const onUp = () => {
+      state.current.drag = false;
+      cvs.style.cursor = 'grab';
+    };
+
+    // 键盘导航支持
+    const onKeyDown = (e: KeyboardEvent) => {
+      const step = 0.001; // 键盘平移步长
+      let moved = false;
+      
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          vp.current.center[1] += step;
+          moved = true;
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          vp.current.center[1] -= step;
+          moved = true;
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          vp.current.center[0] -= step;
+          moved = true;
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          vp.current.center[0] += step;
+          moved = true;
+          break;
+        case '=':
+        case '+':
+          e.preventDefault();
+          vp.current.zoom = Math.min(20, vp.current.zoom + 0.5);
+          moved = true;
+          break;
+        case '-':
+          e.preventDefault();
+          vp.current.zoom = Math.max(2, vp.current.zoom - 0.5);
+          moved = true;
+          break;
+      }
+      
+      if (moved) {
+        state.current.needsRedraw = true;
+        requestRedraw();
+      }
+    };
+
+    // 触摸手势支持（基础版）
+    let touchStart: { x: number; y: number; dist?: number } | null = null;
+    
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        // 单指拖拽
+        const touch = e.touches[0];
+        touchStart = { x: touch.clientX, y: touch.clientY };
+        state.current.drag = true;
+      } else if (e.touches.length === 2) {
+        // 双指缩放
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        touchStart = { 
+          x: (t1.clientX + t2.clientX) / 2, 
+          y: (t1.clientY + t2.clientY) / 2, 
+          dist 
+        };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (!touchStart) return;
+      
+      if (e.touches.length === 1 && state.current.drag) {
+        // 单指拖拽
+        const touch = e.touches[0];
+        const dx = (touch.clientX - touchStart.x) / vp.current.dpr;
+        const dy = (touch.clientY - touchStart.y) / vp.current.dpr;
+        const scale = Math.pow(2, vp.current.zoom) * 256;
+        
+        vp.current.center[0] -= (dx / scale) * 360;
+        vp.current.center[1] += (dy / scale) * 180;
+        
+        touchStart = { x: touch.clientX, y: touch.clientY };
+        state.current.needsRedraw = true;
+        requestRedraw();
+      } else if (e.touches.length === 2 && touchStart.dist) {
+        // 双指缩放
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scaleFactor = dist / touchStart.dist;
+        
+        if (Math.abs(scaleFactor - 1) > 0.1) { // 防抖
+          const zoomDelta = Math.log2(scaleFactor);
+          vp.current.zoom = Math.max(2, Math.min(20, vp.current.zoom + zoomDelta));
+          touchStart.dist = dist;
+          state.current.needsRedraw = true;
+          requestRedraw();
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      touchStart = null;
+      state.current.drag = false;
+    };
+
+    cvs.addEventListener("wheel", onWheel, { passive: false });
+    cvs.addEventListener("mousedown", onDown);
+    cvs.addEventListener("touchstart", onTouchStart, { passive: false });
+    cvs.addEventListener("touchmove", onTouchMove, { passive: false });
+    cvs.addEventListener("touchend", onTouchEnd, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("keydown", onKeyDown);
+    
+    cvs.style.cursor = 'grab';
+    cvs.tabIndex = 0; // 使画布可聚焦以接收键盘事件
+
+    return () => {
+      ro.disconnect();
+      cvs.removeEventListener("wheel", onWheel);
+      cvs.removeEventListener("mousedown", onDown);
+      cvs.removeEventListener("touchstart", onTouchStart);
+      cvs.removeEventListener("touchmove", onTouchMove);
+      cvs.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("keydown", onKeyDown);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    state.current.needsRedraw = true;
+    requestRedraw();
+  }, [props.enc, props.route]);
+
+  const draw = () => {
+    const cvs = canvasRef.current!;
+    const ctx = cvs.getContext("2d")!;
+    const { width, height, dpr, zoom, center } = vp.current;
+
+    // 设置高DPI渲染
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    // 深色海洋背景
+    ctx.fillStyle = "#06141d";
+    ctx.fillRect(0, 0, width, height);
+
+    // 视窗裁剪优化：计算当前可见的地理边界
+    const viewBounds = getVisibleBounds();
+    
+    // 启用视窗裁剪以提升性能
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, width, height);
+    ctx.clip();
+
+    // ENC-lite 海岸线（使用视窗裁剪优化）
+    if (layers.current.enc && props.enc?.coast) {
+      ctx.fillStyle = "#1e2936";
+      ctx.strokeStyle = "#2d3748";
+      ctx.lineWidth = 1;
+      
+      for (const poly of props.enc.coast) {
+        if (isGeometryVisible(poly, viewBounds)) {
+          drawPolygon(ctx, poly, true, true);
+        }
+      }
+      
+      // 浅水区域（安全等深线着色）
+      if (props.enc.shallow) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = "#1a365d";
+        ctx.strokeStyle = "#2c5282";
+        
+        for (const shallow of props.enc.shallow) {
+          if (isGeometryVisible(shallow, viewBounds)) {
+            drawPolygon(ctx, shallow, true, true);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // 等深线（depth contours）
+      if (props.enc.depths) {
+        ctx.strokeStyle = "#4a90e2";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        
+        for (const depth of props.enc.depths) {
+          if (isGeometryVisible(depth, viewBounds)) {
+            drawPolygon(ctx, depth, false, true);
+          }
+        }
+        ctx.setLineDash([]);
+      }
+    }
+
+    // TSS 分道通航制（视窗裁剪优化）
+    if (layers.current.tss && props.enc?.tss) {
+      // 航行车道
+      if (props.enc.tss.lanes?.length > 0) {
+        ctx.fillStyle = "rgba(255, 214, 10, 0.25)";
+        ctx.strokeStyle = "rgba(255, 214, 10, 0.6)";
+        ctx.lineWidth = 1;
+        
+        for (const lane of props.enc.tss.lanes) {
+          if (isGeometryVisible(lane, viewBounds)) {
+            drawPolygon(ctx, lane, true, true);
+          }
+        }
+      }
+      
+      // 分隔带
+      if (props.enc.tss.sep_zones?.length > 0) {
+        ctx.fillStyle = "rgba(255, 99, 71, 0.3)";
+        ctx.strokeStyle = "rgba(255, 99, 71, 0.8)";
+        ctx.lineWidth = 2;
+        
+        for (const sep of props.enc.tss.sep_zones) {
+          if (isGeometryVisible(sep, viewBounds)) {
+            drawPolygon(ctx, sep, true, true);
+          }
+        }
+      }
+    }
+
+    // S-124 警告区域（视窗裁剪优化）
+    if (layers.current.s124 && props.enc?.s124) {
+      // 限速区
+      if (props.enc.s124.speed_limits?.length > 0) {
+        ctx.fillStyle = "rgba(0, 153, 255, 0.2)";
+        ctx.strokeStyle = "rgba(0, 153, 255, 0.6)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        
+        for (const zone of props.enc.s124.speed_limits) {
+          if (isGeometryVisible(zone.geometry, viewBounds)) {
+            drawPolygon(ctx, zone.geometry, true, true);
+          }
+        }
+        ctx.setLineDash([]);
+      }
+      
+      // 禁航区
+      if (props.enc.s124.prohibited?.length > 0) {
+        ctx.fillStyle = "rgba(255, 0, 0, 0.25)";
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 5]);
+        
+        for (const zone of props.enc.s124.prohibited) {
+          if (isGeometryVisible(zone.geometry, viewBounds)) {
+            drawPolygon(ctx, zone.geometry, true, true);
+          }
+        }
+        ctx.setLineDash([]);
+      }
+    }
+
+    // 助航设备（Aids to Navigation）
+    if (layers.current.enc && props.enc?.aids) {
+      for (const aid of props.enc.aids) {
+        const [x, y] = project([aid.lon, aid.lat]);
+        
+        // 检查是否在视窗内
+        if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
+          drawAidToNavigation(ctx, x, y, aid.type, aid.color);
+        }
+      }
+    }
+
+    // 规划航线（增强版RTZ可视化）
+    if (layers.current.route && props.route?.length > 1) {
+      // 航线安全走廊（XTD）- 绘制在主线之前
+      ctx.strokeStyle = "rgba(163, 190, 140, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 3]);
+      
+      for (let i = 0; i < props.route.length - 1; i++) {
+        const [x1, y1] = project(props.route[i]);
+        const [x2, y2] = project(props.route[i + 1]);
+        
+        // 计算垂直于航线的XTD走廊边界
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+          const xtdWidth = 20; // 像素宽度，实际应根据XTD值计算
+          const perpX = (-dy / len) * xtdWidth;
+          const perpY = (dx / len) * xtdWidth;
+          
+          // 绘制走廊边界
+          ctx.beginPath();
+          ctx.moveTo(x1 + perpX, y1 + perpY);
+          ctx.lineTo(x2 + perpX, y2 + perpY);
+          ctx.stroke();
+          
+          ctx.beginPath();
+          ctx.moveTo(x1 - perpX, y1 - perpY);
+          ctx.lineTo(x2 - perpX, y2 - perpY);
+          ctx.stroke();
+        }
+      }
+      ctx.setLineDash([]);
+
+      // 航线主线（粗线）
+      ctx.strokeStyle = "#a3be8c";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      ctx.beginPath();
+      let first = true;
+      for (const p of props.route) {
+        const [x, y] = project(p);
+        if (first) {
+          ctx.moveTo(x, y);
+          first = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+
+      // 航线方向箭头
+      ctx.strokeStyle = "#5e81ac";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < props.route.length - 1; i++) {
+        const [x1, y1] = project(props.route[i]);
+        const [x2, y2] = project(props.route[i + 1]);
+        
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        
+        // 计算航向箭头
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const arrowLen = 8;
+        const arrowAngle = Math.PI / 6;
+        
+        ctx.beginPath();
+        ctx.moveTo(midX, midY);
+        ctx.lineTo(
+          midX - arrowLen * Math.cos(angle - arrowAngle),
+          midY - arrowLen * Math.sin(angle - arrowAngle)
+        );
+        ctx.moveTo(midX, midY);
+        ctx.lineTo(
+          midX - arrowLen * Math.cos(angle + arrowAngle),
+          midY - arrowLen * Math.sin(angle + arrowAngle)
+        );
+        ctx.stroke();
+      }
+
+      // 航路点（增强版）
+      props.route.forEach((p, i) => {
+        const [x, y] = project(p);
+        const isStart = i === 0;
+        const isEnd = i === props.route.length - 1;
+        const isWaypoint = !isStart && !isEnd;
+        
+        // 转弯半径圆圈（仅中间航路点）
+        if (isWaypoint) {
+          ctx.strokeStyle = "rgba(136, 192, 208, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, Math.PI * 2); // 转弯半径可视化
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        
+        // 航路点主体
+        ctx.fillStyle = isStart ? "#bf616a" : isEnd ? "#a3be8c" : "#88c0d0";
+        ctx.strokeStyle = "#2e3440";
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        const radius = isStart || isEnd ? 8 : 6;
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        
+        // 航路点标签
+        ctx.fillStyle = "#2e3440";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        const label = isStart ? "S" : isEnd ? "E" : `W${i}`;
+        ctx.fillText(label, x, y);
+        
+        // 航路点信息（鼠标悬停时显示，暂时简化显示）
+        if (zoom >= 10) { // 高缩放级别时显示详细信息
+          ctx.fillStyle = "rgba(46, 52, 64, 0.8)";
+          ctx.fillRect(x + 12, y - 15, 60, 25);
+          ctx.fillStyle = "#d8dee9";
+          ctx.font = "9px monospace";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(`${p[1].toFixed(4)}°N`, x + 14, y - 12);
+          ctx.fillText(`${p[0].toFixed(4)}°E`, x + 14, y - 3);
+        }
+      });
+
+      // 航段距离和方位信息
+      if (zoom >= 8) {
+        ctx.fillStyle = "#81a1c1";
+        ctx.font = "10px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        for (let i = 0; i < props.route.length - 1; i++) {
+          const [x1, y1] = project(props.route[i]);
+          const [x2, y2] = project(props.route[i + 1]);
+          
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          
+          // 计算真实地理距离和方位
+          const p1 = props.route[i];
+          const p2 = props.route[i + 1];
+          const dist = haversineDistance(p1[1], p1[0], p2[1], p2[0]) / 1852; // 海里
+          const bearing = calculateBearing(p1[1], p1[0], p2[1], p2[0]);
+          
+          // 背景
+          ctx.fillStyle = "rgba(46, 52, 64, 0.7)";
+          ctx.fillRect(midX - 25, midY - 10, 50, 20);
+          
+          // 文字
+          ctx.fillStyle = "#d8dee9";
+          ctx.fillText(`${dist.toFixed(1)}nm`, midX, midY - 3);
+          ctx.fillText(`${bearing.toFixed(0)}°`, midX, midY + 7);
+        }
+      }
+    }
+
+    // 恢复裁剪状态
+    ctx.restore();
+
+    // 坐标和缩放级别显示（调试用）
+    ctx.fillStyle = "rgba(46, 52, 64, 0.8)";
+    ctx.fillRect(8, 8, 200, 60);
+    ctx.fillStyle = "#d8dee9";
+    ctx.font = "11px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(`Center: ${center[1].toFixed(4)}°N, ${center[0].toFixed(4)}°E`, 12, 24);
+    ctx.fillText(`Zoom: ${zoom.toFixed(1)}`, 12, 40);
+    ctx.fillText(`Route: ${props.route.length} waypoints`, 12, 56);
+
+    // 辅助函数
+    function project([lon, lat]: LonLat): [number, number] {
+      const { x, y } = lonLatToXY(lon, lat, center[0], center[1], zoom, width, height);
+      return [x, y];
+    }
+
+    function getVisibleBounds() {
+      const { center, zoom, width, height } = vp.current;
+      
+      // 计算视窗四角的地理坐标
+      const margin = 0.1; // 10% 边距用于缓冲
+      const w_margin = width * (1 + margin);
+      const h_margin = height * (1 + margin);
+      
+      // 使用逆投影计算边界
+      const topLeft = xyToLonLat(-w_margin/2, -h_margin/2, center[0], center[1], zoom, width, height);
+      const bottomRight = xyToLonLat(w_margin/2, h_margin/2, center[0], center[1], zoom, width, height);
+      
+      return {
+        minLon: Math.min(topLeft.lon, bottomRight.lon),
+        maxLon: Math.max(topLeft.lon, bottomRight.lon),
+        minLat: Math.min(topLeft.lat, bottomRight.lat),
+        maxLat: Math.max(topLeft.lat, bottomRight.lat)
+      };
+    }
+
+    // 快速边界检查：几何体是否在视窗内
+    function isGeometryVisible(coords: LonLat[][], bounds: ReturnType<typeof getVisibleBounds>) {
+      if (!coords || coords.length === 0) return false;
+      
+      // 检查几何体边界框是否与视窗相交
+      for (const ring of coords) {
+        for (const [lon, lat] of ring) {
+          if (lon >= bounds.minLon && lon <= bounds.maxLon && 
+              lat >= bounds.minLat && lat <= bounds.maxLat) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function drawPolygon(
+      ctx: CanvasRenderingContext2D, 
+      coords: LonLat[][], 
+      fill: boolean, 
+      stroke: boolean
+    ) {
+      for (const ring of coords) {
+        if (ring.length < 3) continue;
+        
+        ctx.beginPath();
+        ring.forEach((p, i) => {
+          const [x, y] = project(p);
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.closePath();
+        
+        if (fill) ctx.fill();
+        if (stroke) ctx.stroke();
+      }
+    }
+
+    // 绘制助航设备符号
+    function drawAidToNavigation(ctx: CanvasRenderingContext2D, x: number, y: number, type: string, color?: string) {
+      ctx.save();
+      ctx.translate(x, y);
+      
+      switch (type) {
+        case 'lighthouse':
+          // 灯塔符号：三角形 + 光束
+          ctx.fillStyle = color || "#ffeb3b";
+          ctx.strokeStyle = "#333";
+          ctx.lineWidth = 1;
+          
+          ctx.beginPath();
+          ctx.moveTo(0, -8);
+          ctx.lineTo(-6, 6);
+          ctx.lineTo(6, 6);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          
+          // 光束
+          ctx.strokeStyle = "rgba(255, 235, 59, 0.6)";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([3, 2]);
+          ctx.beginPath();
+          ctx.arc(0, 0, 15, -Math.PI/3, -2*Math.PI/3, true);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          break;
+          
+        case 'buoy':
+          // 浮标符号：菱形
+          ctx.fillStyle = color || "#e53e3e";
+          ctx.strokeStyle = "#333";
+          ctx.lineWidth = 1;
+          
+          ctx.beginPath();
+          ctx.moveTo(0, -5);
+          ctx.lineTo(4, 0);
+          ctx.lineTo(0, 5);
+          ctx.lineTo(-4, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          break;
+          
+        case 'beacon':
+          // 信标符号：圆点 + 十字
+          ctx.fillStyle = color || "#38a169";
+          ctx.strokeStyle = "#333";
+          ctx.lineWidth = 1;
+          
+          ctx.beginPath();
+          ctx.arc(0, 0, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          
+          // 十字
+          ctx.beginPath();
+          ctx.moveTo(-6, 0);
+          ctx.lineTo(6, 0);
+          ctx.moveTo(0, -6);
+          ctx.lineTo(0, 6);
+          ctx.stroke();
+          break;
+          
+        default:
+          // 默认符号：圆点
+          ctx.fillStyle = color || "#4a90e2";
+          ctx.beginPath();
+          ctx.arc(0, 0, 3, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+      }
+      
+      ctx.restore();
+    }
+
+    // 计算两点间距离（米）
+    function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+      const R = 6371000; // 地球半径（米）
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // 计算方位角（度）
+    function calculateBearing(lat1: number, lon1: number, lat2: number, lon2: number): number {
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const lat1Rad = lat1 * Math.PI / 180;
+      const lat2Rad = lat2 * Math.PI / 180;
+      const y = Math.sin(dLon) * Math.cos(lat2Rad);
+      const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - 
+                Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+      const brng = Math.atan2(y, x);
+      return ((brng * 180 / Math.PI) + 360) % 360;
+    }
+  };
+
+  return <canvas ref={canvasRef} style={props.style} />;
+});
