@@ -1,0 +1,80 @@
+{
+  "generated_at": "2025-08-11T08:41:06.480436Z",
+  "osm_tiles": {
+    "root": "/Users/jasonwong/planner/data/osm_tiles/standard",
+    "total_tiles": 21,
+    "total_size_bytes": 155652,
+    "zoom_levels": {
+      "0": {
+        "tiles": 1,
+        "size_bytes": 7412
+      },
+      "1": {
+        "tiles": 4,
+        "size_bytes": 29648
+      },
+      "2": {
+        "tiles": 16,
+        "size_bytes": 118592
+      }
+    },
+    "sample_checked": 21,
+    "sample_valid_png": 21,
+    "valid_png_ratio": 1.0,
+    "sample_examples": [
+      "/Users/jasonwong/planner/data/osm_tiles/standard/0/0/0.png",
+      "/Users/jasonwong/planner/data/osm_tiles/standard/1/0/1.png",
+      "/Users/jasonwong/planner/data/osm_tiles/standard/1/0/0.png",
+      "/Users/jasonwong/planner/data/osm_tiles/standard/1/1/1.png",
+      "/Users/jasonwong/planner/data/osm_tiles/standard/1/1/0.png"
+    ]
+  },
+  "openseamap_seamark_tiles": {
+    "root": "/Users/jasonwong/planner/data/openseamap_tiles/seamark",
+    "total_tiles": 21,
+    "total_size_bytes": 7014,
+    "zoom_levels": {
+      "0": {
+        "tiles": 1,
+        "size_bytes": 334
+      },
+      "1": {
+        "tiles": 4,
+        "size_bytes": 1336
+      },
+      "2": {
+        "tiles": 16,
+        "size_bytes": 5344
+      }
+    },
+    "sample_checked": 21,
+    "sample_valid_png": 21,
+    "valid_png_ratio": 1.0,
+    "sample_examples": [
+      "/Users/jasonwong/planner/data/openseamap_tiles/seamark/0/0/0.png",
+      "/Users/jasonwong/planner/data/openseamap_tiles/seamark/1/0/1.png",
+      "/Users/jasonwong/planner/data/openseamap_tiles/seamark/1/0/0.png",
+      "/Users/jasonwong/planner/data/openseamap_tiles/seamark/1/1/1.png",
+      "/Users/jasonwong/planner/data/openseamap_tiles/seamark/1/1/0.png"
+    ]
+  },
+  "osm_water_archives": {
+    "simplified_3857_zip": {
+      "path": "/Users/jasonwong/planner/data/osm_water/simplified-water-polygons-3857.zip",
+      "exists": true,
+      "size_bytes": 287,
+      "note": "File size unusually small; may not be a valid zip (mirror/redirect placeholder)."
+    },
+    "water_polygons_split_3857_zip": {
+      "path": "/Users/jasonwong/planner/data/osm_water/water-polygons-split-3857.zip",
+      "exists": true,
+      "size_bytes": 894951901,
+      "note": null
+    }
+  },
+  "notes": [
+    "Low-zoom raster tiles (z=0..2) cached for global baseline.",
+    "OpenSeaMap seamark overlay cached for the same zooms.",
+    "OSM simplified water polygons zip appears invalid/tiny on this mirror; full split archive present."
+  ]
+}

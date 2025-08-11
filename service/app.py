@@ -6,6 +6,7 @@ FastAPI-based service for route planning, validation, and RTZ export.
 from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -47,6 +48,14 @@ app = FastAPI(
     description="Standards-compliant maritime route planning service",
     version="1.0.0"
 )
+
+# Mount local cached tiles (read-only) to serve as static resources for evaluation
+tiles_osm_path = Path(__file__).resolve().parents[1] / "data/osm_tiles/standard"
+tiles_seamark_path = Path(__file__).resolve().parents[1] / "data/openseamap_tiles/seamark"
+if tiles_osm_path.exists():
+    app.mount("/static/osm", StaticFiles(directory=str(tiles_osm_path)), name="osm_tiles")
+if tiles_seamark_path.exists():
+    app.mount("/static/openseamap", StaticFiles(directory=str(tiles_seamark_path)), name="openseamap_tiles")
 
 # Add CORS middleware to allow frontend access
 app.add_middleware(
@@ -138,7 +147,10 @@ async def root():
             "/validate",
             "/export/rtz",
             "/import/rtz",
-            "/status"
+            "/status",
+            "/basemap/status",
+            "/static/osm/{z}/{x}/{y}.png",
+            "/static/openseamap/{z}/{x}/{y}.png"
         ]
     }
 
@@ -739,6 +751,25 @@ async def get_status():
         "planner_ready": state.planner is not None,
         "route_available": state.current_route is not None,
         "last_validation": state.validation_report is not None
+    }
+
+
+@app.get("/basemap/status")
+async def basemap_status():
+    """Assess availability of locally cached basemap assets."""
+    def count_tiles(root: Path) -> int:
+        if not root.exists():
+            return 0
+        return sum(1 for _ in root.rglob("*.png"))
+
+    osm_tiles = count_tiles(tiles_osm_path)
+    seamark_tiles = count_tiles(tiles_seamark_path)
+    return {
+        "osm_tiles_root": str(tiles_osm_path),
+        "openseamap_tiles_root": str(tiles_seamark_path),
+        "osm_tiles_count": osm_tiles,
+        "openseamap_tiles_count": seamark_tiles,
+        "ready": osm_tiles > 0 and seamark_tiles > 0
     }
 
 

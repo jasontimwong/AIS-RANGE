@@ -34,6 +34,34 @@
 
 ---
 
+## [3.2.1] - 2025-08-11
+
+### 📥 资源获取 Basemap Assets Pulled
+- 获取 OSM 标准瓦片 z=0..2 并缓存至 `data/osm_tiles/standard/`
+- 获取 OpenSeaMap 航标叠加瓦片 z=0..2 并缓存至 `data/openseamap_tiles/seamark/`
+- 获取 OSM 水域多边形数据包：
+  - `water-polygons-split-3857.zip` (约 854MB) 已下载
+  - `simplified-water-polygons-3857.zip` 下载到 287B，疑似镜像占位/重定向（非有效 zip）
+
+### 🧪 评估 Evaluation
+- 新增评估脚本 `tools/basemap_eval.py`，生成报告 `artifacts/basemap_eval.json`
+- 统计结果：
+  - OSM 瓦片共 21 张（z=0..2），采样有效 PNG 比例 100%
+  - OpenSeaMap 航标瓦片共 21 张（z=0..2），采样有效 PNG 比例 100%
+  - OSM simplified 水域包无效（体积异常）；full split 存在且体积正常
+
+### 🔎 结论 Conclusions
+- 本地已具备全球低缩放底图与航标叠加样本，可用于前端海图叠加方案评估
+- 若需矢量水域轮廓的轻量版本，需更换 simplified 包的下载源或采用 Natural Earth 海岸线/陆地掩膜替代
+
+### 🔌 API 只读扩展 Read-only API Extensions
+- 在新分支 `feature/basemap-local-serving` 上新增只读静态服务与状态端点：
+  - `GET /static/osm/{z}/{x}/{y}.png` 本地 OSM 瓦片（若存在）
+  - `GET /static/openseamap/{z}/{x}/{y}.png` 本地 OpenSeaMap 航标瓦片（若存在）
+  - `GET /basemap/status` 本地底图资源可用性摘要
+- 以上为纯只读与可选挂载，不影响现有业务逻辑，随分支可随时回退
+
+
 ## [3.1.0] - 2025-08-11
 
 ### 🎉 主要更新 Major Updates
