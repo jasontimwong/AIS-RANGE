@@ -1,0 +1,717 @@
+{
+  "ports": {
+    "US": {
+      "San Francisco": {
+        "name": "Port of San Francisco",
+        "lat": 37.7955,
+        "lon": -122.3937,
+        "type": "major",
+        "code": "USSFO"
+      },
+      "Oakland": {
+        "name": "Port of Oakland",
+        "lat": 37.7957,
+        "lon": -122.2798,
+        "type": "major",
+        "code": "USOAK"
+      },
+      "Los Angeles": {
+        "name": "Port of Los Angeles",
+        "lat": 33.7406,
+        "lon": -118.2706,
+        "type": "major",
+        "code": "USLAX"
+      },
+      "Long Beach": {
+        "name": "Port of Long Beach",
+        "lat": 33.7505,
+        "lon": -118.2023,
+        "type": "major",
+        "code": "USLGB"
+      },
+      "Seattle": {
+        "name": "Port of Seattle",
+        "lat": 47.6205,
+        "lon": -122.3493,
+        "type": "major",
+        "code": "USSEA"
+      },
+      "Portland": {
+        "name": "Port of Portland",
+        "lat": 45.5898,
+        "lon": -122.7606,
+        "type": "major",
+        "code": "USPDX"
+      },
+      "San Diego": {
+        "name": "Port of San Diego",
+        "lat": 32.7338,
+        "lon": -117.1933,
+        "type": "major",
+        "code": "USSAN"
+      },
+      "Tacoma": {
+        "name": "Port of Tacoma",
+        "lat": 47.2565,
+        "lon": -122.4618,
+        "type": "major",
+        "code": "USTIW"
+      },
+      "New York": {
+        "name": "Port of New York/New Jersey",
+        "lat": 40.6695,
+        "lon": -74.0464,
+        "type": "major",
+        "code": "USNYC"
+      },
+      "Houston": {
+        "name": "Port of Houston",
+        "lat": 29.7589,
+        "lon": -95.0777,
+        "type": "major",
+        "code": "USHOU"
+      },
+      "Miami": {
+        "name": "Port of Miami",
+        "lat": 25.7743,
+        "lon": -80.1666,
+        "type": "major",
+        "code": "USMIA"
+      },
+      "New Orleans": {
+        "name": "Port of New Orleans",
+        "lat": 29.9430,
+        "lon": -90.0584,
+        "type": "major",
+        "code": "USMSY"
+      }
+    },
+    "CN": {
+      "Shanghai": {
+        "name": "Port of Shanghai",
+        "lat": 31.3456,
+        "lon": 121.6193,
+        "type": "major",
+        "code": "CNSHA"
+      },
+      "Ningbo": {
+        "name": "Port of Ningbo-Zhoushan",
+        "lat": 29.8683,
+        "lon": 121.5440,
+        "type": "major",
+        "code": "CNNGB"
+      },
+      "Shenzhen": {
+        "name": "Port of Shenzhen",
+        "lat": 22.5726,
+        "lon": 113.9883,
+        "type": "major",
+        "code": "CNSZX"
+      },
+      "Guangzhou": {
+        "name": "Port of Guangzhou",
+        "lat": 23.0931,
+        "lon": 113.3244,
+        "type": "major",
+        "code": "CNCAN"
+      },
+      "Qingdao": {
+        "name": "Port of Qingdao",
+        "lat": 36.0680,
+        "lon": 120.3826,
+        "type": "major",
+        "code": "CNTAO"
+      },
+      "Tianjin": {
+        "name": "Port of Tianjin",
+        "lat": 38.9823,
+        "lon": 117.7462,
+        "type": "major",
+        "code": "CNTSN"
+      },
+      "Dalian": {
+        "name": "Port of Dalian",
+        "lat": 38.9243,
+        "lon": 121.6147,
+        "type": "major",
+        "code": "CNDLC"
+      },
+      "Xiamen": {
+        "name": "Port of Xiamen",
+        "lat": 24.4798,
+        "lon": 118.0894,
+        "type": "major",
+        "code": "CNXMN"
+      }
+    },
+    "JP": {
+      "Tokyo": {
+        "name": "Port of Tokyo",
+        "lat": 35.6551,
+        "lon": 139.8360,
+        "type": "major",
+        "code": "JPTYO"
+      },
+      "Yokohama": {
+        "name": "Port of Yokohama",
+        "lat": 35.4437,
+        "lon": 139.6380,
+        "type": "major",
+        "code": "JPYOK"
+      },
+      "Osaka": {
+        "name": "Port of Osaka",
+        "lat": 34.6523,
+        "lon": 135.4359,
+        "type": "major",
+        "code": "JPOSA"
+      },
+      "Kobe": {
+        "name": "Port of Kobe",
+        "lat": 34.6797,
+        "lon": 135.1794,
+        "type": "major",
+        "code": "JPUKB"
+      },
+      "Nagoya": {
+        "name": "Port of Nagoya",
+        "lat": 35.0842,
+        "lon": 136.8839,
+        "type": "major",
+        "code": "JPNGO"
+      }
+    },
+    "SG": {
+      "Singapore": {
+        "name": "Port of Singapore",
+        "lat": 1.2644,
+        "lon": 103.8236,
+        "type": "major",
+        "code": "SGSIN"
+      }
+    },
+    "KR": {
+      "Busan": {
+        "name": "Port of Busan",
+        "lat": 35.1028,
+        "lon": 129.0403,
+        "type": "major",
+        "code": "KRPUS"
+      },
+      "Incheon": {
+        "name": "Port of Incheon",
+        "lat": 37.4563,
+        "lon": 126.7052,
+        "type": "major",
+        "code": "KRINC"
+      }
+    },
+    "AE": {
+      "Dubai": {
+        "name": "Port of Dubai (Jebel Ali)",
+        "lat": 25.0075,
+        "lon": 55.0783,
+        "type": "major",
+        "code": "AEJEA"
+      }
+    },
+    "NL": {
+      "Rotterdam": {
+        "name": "Port of Rotterdam",
+        "lat": 51.9225,
+        "lon": 4.4792,
+        "type": "major",
+        "code": "NLRTM"
+      },
+      "Amsterdam": {
+        "name": "Port of Amsterdam",
+        "lat": 52.3791,
+        "lon": 4.8951,
+        "type": "major",
+        "code": "NLAMS"
+      }
+    },
+    "DE": {
+      "Hamburg": {
+        "name": "Port of Hamburg",
+        "lat": 53.5511,
+        "lon": 9.9937,
+        "type": "major",
+        "code": "DEHAM"
+      },
+      "Bremerhaven": {
+        "name": "Port of Bremerhaven",
+        "lat": 53.5396,
+        "lon": 8.5809,
+        "type": "major",
+        "code": "DEBRV"
+      }
+    },
+    "BE": {
+      "Antwerp": {
+        "name": "Port of Antwerp",
+        "lat": 51.2194,
+        "lon": 4.4025,
+        "type": "major",
+        "code": "BEANR"
+      }
+    },
+    "GB": {
+      "London": {
+        "name": "Port of London",
+        "lat": 51.5074,
+        "lon": 0.0511,
+        "type": "major",
+        "code": "GBLON"
+      },
+      "Southampton": {
+        "name": "Port of Southampton",
+        "lat": 50.8989,
+        "lon": -1.4129,
+        "type": "major",
+        "code": "GBSOU"
+      },
+      "Liverpool": {
+        "name": "Port of Liverpool",
+        "lat": 53.4058,
+        "lon": -2.9926,
+        "type": "major",
+        "code": "GBLIV"
+      }
+    },
+    "ES": {
+      "Barcelona": {
+        "name": "Port of Barcelona",
+        "lat": 41.3567,
+        "lon": 2.1674,
+        "type": "major",
+        "code": "ESBCN"
+      },
+      "Valencia": {
+        "name": "Port of Valencia",
+        "lat": 39.4489,
+        "lon": -0.3227,
+        "type": "major",
+        "code": "ESVLC"
+      }
+    },
+    "IT": {
+      "Genoa": {
+        "name": "Port of Genoa",
+        "lat": 44.4056,
+        "lon": 8.9463,
+        "type": "major",
+        "code": "ITGOA"
+      },
+      "Venice": {
+        "name": "Port of Venice",
+        "lat": 45.4408,
+        "lon": 12.3155,
+        "type": "major",
+        "code": "ITVCE"
+      }
+    },
+    "AU": {
+      "Sydney": {
+        "name": "Port of Sydney",
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "type": "major",
+        "code": "AUSYD"
+      },
+      "Melbourne": {
+        "name": "Port of Melbourne",
+        "lat": -37.8136,
+        "lon": 144.9631,
+        "type": "major",
+        "code": "AUMEL"
+      },
+      "Brisbane": {
+        "name": "Port of Brisbane",
+        "lat": -27.3837,
+        "lon": 153.1696,
+        "type": "major",
+        "code": "AUBNE"
+      }
+    },
+    "BR": {
+      "Santos": {
+        "name": "Port of Santos",
+        "lat": -23.9547,
+        "lon": -46.3066,
+        "type": "major",
+        "code": "BRSSZ"
+      },
+      "Rio de Janeiro": {
+        "name": "Port of Rio de Janeiro",
+        "lat": -22.8954,
+        "lon": -43.1241,
+        "type": "major",
+        "code": "BRRIO"
+      }
+    },
+    "MY": {
+      "Port Klang": {
+        "name": "Port Klang",
+        "lat": 3.0000,
+        "lon": 101.4000,
+        "type": "major",
+        "code": "MYPKG"
+      },
+      "Penang": {
+        "name": "Port of Penang",
+        "lat": 5.4164,
+        "lon": 100.3327,
+        "type": "major",
+        "code": "MYPEN"
+      },
+      "Johor": {
+        "name": "Port of Tanjung Pelepas",
+        "lat": 1.3628,
+        "lon": 103.5519,
+        "type": "major",
+        "code": "MYTPP"
+      }
+    },
+    "TH": {
+      "Bangkok": {
+        "name": "Port of Bangkok",
+        "lat": 13.5403,
+        "lon": 100.5967,
+        "type": "major",
+        "code": "THBKK"
+      },
+      "Laem Chabang": {
+        "name": "Port of Laem Chabang",
+        "lat": 13.0827,
+        "lon": 100.8816,
+        "type": "major",
+        "code": "THLCH"
+      }
+    },
+    "ID": {
+      "Jakarta": {
+        "name": "Port of Tanjung Priok",
+        "lat": -6.0969,
+        "lon": 106.8810,
+        "type": "major",
+        "code": "IDJKT"
+      },
+      "Surabaya": {
+        "name": "Port of Tanjung Perak",
+        "lat": -7.2008,
+        "lon": 112.7343,
+        "type": "major",
+        "code": "IDSUB"
+      }
+    },
+    "IN": {
+      "Mumbai": {
+        "name": "Port of Mumbai",
+        "lat": 18.9506,
+        "lon": 72.8450,
+        "type": "major",
+        "code": "INBOM"
+      },
+      "Chennai": {
+        "name": "Port of Chennai",
+        "lat": 13.0889,
+        "lon": 80.2871,
+        "type": "major",
+        "code": "INMAA"
+      },
+      "Kolkata": {
+        "name": "Port of Kolkata",
+        "lat": 22.5626,
+        "lon": 88.3630,
+        "type": "major",
+        "code": "INCCU"
+      },
+      "Cochin": {
+        "name": "Port of Cochin",
+        "lat": 9.9674,
+        "lon": 76.2673,
+        "type": "major",
+        "code": "INCOK"
+      }
+    },
+    "VN": {
+      "Ho Chi Minh": {
+        "name": "Port of Saigon",
+        "lat": 10.7595,
+        "lon": 106.7224,
+        "type": "major",
+        "code": "VNSGN"
+      },
+      "Haiphong": {
+        "name": "Port of Haiphong",
+        "lat": 20.8566,
+        "lon": 106.6822,
+        "type": "major",
+        "code": "VNHPH"
+      },
+      "Da Nang": {
+        "name": "Port of Da Nang",
+        "lat": 16.0678,
+        "lon": 108.2232,
+        "type": "major",
+        "code": "VNDAD"
+      }
+    },
+    "PH": {
+      "Manila": {
+        "name": "Port of Manila",
+        "lat": 14.5896,
+        "lon": 120.9679,
+        "type": "major",
+        "code": "PHMNL"
+      },
+      "Subic Bay": {
+        "name": "Port of Subic Bay",
+        "lat": 14.8248,
+        "lon": 120.2808,
+        "type": "major",
+        "code": "PHSFS"
+      }
+    },
+    "TW": {
+      "Kaohsiung": {
+        "name": "Port of Kaohsiung",
+        "lat": 22.6147,
+        "lon": 120.2628,
+        "type": "major",
+        "code": "TWKHH"
+      },
+      "Taipei": {
+        "name": "Port of Keelung",
+        "lat": 25.1276,
+        "lon": 121.7392,
+        "type": "major",
+        "code": "TWKEL"
+      },
+      "Taichung": {
+        "name": "Port of Taichung",
+        "lat": 24.2917,
+        "lon": 120.5322,
+        "type": "major",
+        "code": "TWTXG"
+      }
+    },
+    "HK": {
+      "Hong Kong": {
+        "name": "Port of Hong Kong",
+        "lat": 22.3093,
+        "lon": 114.1858,
+        "type": "major",
+        "code": "HKHKG"
+      }
+    },
+    "SA": {
+      "Jeddah": {
+        "name": "Port of Jeddah",
+        "lat": 21.4858,
+        "lon": 39.1925,
+        "type": "major",
+        "code": "SAJED"
+      },
+      "Dammam": {
+        "name": "Port of Dammam",
+        "lat": 26.4677,
+        "lon": 50.1018,
+        "type": "major",
+        "code": "SADMM"
+      }
+    },
+    "EG": {
+      "Port Said": {
+        "name": "Port Said",
+        "lat": 31.2565,
+        "lon": 32.2841,
+        "type": "major",
+        "code": "EGPSD"
+      },
+      "Alexandria": {
+        "name": "Port of Alexandria",
+        "lat": 31.2001,
+        "lon": 29.9187,
+        "type": "major",
+        "code": "EGALY"
+      }
+    },
+    "ZA": {
+      "Durban": {
+        "name": "Port of Durban",
+        "lat": -29.8579,
+        "lon": 31.0292,
+        "type": "major",
+        "code": "ZADUR"
+      },
+      "Cape Town": {
+        "name": "Port of Cape Town",
+        "lat": -33.9249,
+        "lon": 18.4241,
+        "type": "major",
+        "code": "ZACPT"
+      }
+    },
+    "CA": {
+      "Vancouver": {
+        "name": "Port of Vancouver",
+        "lat": 49.2827,
+        "lon": -123.1207,
+        "type": "major",
+        "code": "CAVAN"
+      },
+      "Montreal": {
+        "name": "Port of Montreal",
+        "lat": 45.5017,
+        "lon": -73.5673,
+        "type": "major",
+        "code": "CAMTR"
+      },
+      "Halifax": {
+        "name": "Port of Halifax",
+        "lat": 44.6488,
+        "lon": -63.5752,
+        "type": "major",
+        "code": "CAHAL"
+      }
+    },
+    "MX": {
+      "Manzanillo": {
+        "name": "Port of Manzanillo",
+        "lat": 19.0519,
+        "lon": -104.3183,
+        "type": "major",
+        "code": "MXZLO"
+      },
+      "Veracruz": {
+        "name": "Port of Veracruz",
+        "lat": 19.2068,
+        "lon": -96.1323,
+        "type": "major",
+        "code": "MXVER"
+      }
+    },
+    "PA": {
+      "Balboa": {
+        "name": "Port of Balboa",
+        "lat": 8.9488,
+        "lon": -79.5677,
+        "type": "major",
+        "code": "PABLB"
+      },
+      "Cristobal": {
+        "name": "Port of Cristobal",
+        "lat": 9.3547,
+        "lon": -79.9192,
+        "type": "major",
+        "code": "PACTB"
+      }
+    },
+    "CL": {
+      "Valparaiso": {
+        "name": "Port of Valparaiso",
+        "lat": -33.0458,
+        "lon": -71.6197,
+        "type": "major",
+        "code": "CLVAP"
+      },
+      "San Antonio": {
+        "name": "Port of San Antonio",
+        "lat": -33.5935,
+        "lon": -71.6074,
+        "type": "major",
+        "code": "CLSAI"
+      }
+    },
+    "RU": {
+      "St Petersburg": {
+        "name": "Port of St Petersburg",
+        "lat": 59.9311,
+        "lon": 30.3609,
+        "type": "major",
+        "code": "RULED"
+      },
+      "Vladivostok": {
+        "name": "Port of Vladivostok",
+        "lat": 43.1155,
+        "lon": 131.8855,
+        "type": "major",
+        "code": "RUVVO"
+      }
+    },
+    "FR": {
+      "Le Havre": {
+        "name": "Port of Le Havre",
+        "lat": 49.4938,
+        "lon": 0.1077,
+        "type": "major",
+        "code": "FRLEH"
+      },
+      "Marseille": {
+        "name": "Port of Marseille",
+        "lat": 43.2965,
+        "lon": 5.3698,
+        "type": "major",
+        "code": "FRMRS"
+      }
+    },
+    "GR": {
+      "Piraeus": {
+        "name": "Port of Piraeus",
+        "lat": 37.9476,
+        "lon": 23.6466,
+        "type": "major",
+        "code": "GRPIR"
+      }
+    },
+    "TR": {
+      "Istanbul": {
+        "name": "Port of Istanbul",
+        "lat": 41.0194,
+        "lon": 28.9769,
+        "type": "major",
+        "code": "TRIST"
+      },
+      "Izmir": {
+        "name": "Port of Izmir",
+        "lat": 38.4237,
+        "lon": 27.1428,
+        "type": "major",
+        "code": "TRIZM"
+      }
+    },
+    "NZ": {
+      "Auckland": {
+        "name": "Port of Auckland",
+        "lat": -36.8485,
+        "lon": 174.7633,
+        "type": "major",
+        "code": "NZAKL"
+      },
+      "Wellington": {
+        "name": "Port of Wellington",
+        "lat": -41.2865,
+        "lon": 174.7762,
+        "type": "major",
+        "code": "NZWLG"
+      }
+    }
+  },
+  "regions": {
+    "North America West Coast": ["USSFO", "USOAK", "USLAX", "USLGB", "USSEA", "USPDX", "USSAN", "USTIW", "CAVAN"],
+    "North America East Coast": ["USNYC", "USMIA", "CAMTR", "CAHAL"],
+    "North America Gulf": ["USHOU", "USMSY"],
+    "East Asia": ["CNSHA", "CNNGB", "CNSZX", "CNCAN", "CNTAO", "CNTSN", "CNDLC", "CNXMN", "JPTYO", "JPYOK", "JPOSA", "JPUKB", "JPNGO", "KRPUS", "KRINC", "TWKHH", "TWKEL", "TWTXG", "HKHKG", "RUVVO"],
+    "Southeast Asia": ["SGSIN", "MYPKG", "MYPEN", "MYTPP", "THBKK", "THLCH", "IDJKT", "IDSUB", "VNSGN", "VNHPH", "VNDAD", "PHMNL", "PHSFS"],
+    "South Asia": ["INBOM", "INMAA", "INCCU", "INCOK"],
+    "Middle East": ["AEJEA", "SAJED", "SADMM"],
+    "North Europe": ["NLRTM", "NLAMS", "DEHAM", "DEBRV", "BEANR", "GBLON", "GBSOU", "GBLIV", "RULED", "FRLEH"],
+    "Mediterranean": ["ESBCN", "ESVLC", "ITGOA", "ITVCE", "FRMRS", "GRPIR", "TRIST", "TRIZM", "EGPSD", "EGALY"],
+    "Oceania": ["AUSYD", "AUMEL", "AUBNE", "NZAKL", "NZWLG"],
+    "South America": ["BRSSZ", "BRRIO", "CLVAP", "CLSAI"],
+    "Central America": ["PABLB", "PACTB", "MXZLO", "MXVER"],
+    "Africa": ["ZADUR", "ZACPT"]
+  }
+}
