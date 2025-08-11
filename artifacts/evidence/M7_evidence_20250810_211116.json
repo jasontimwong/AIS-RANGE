@@ -1,0 +1,55 @@
+{
+  "validation_time": "2025-08-10T21:11:16.218449",
+  "milestone": "M7",
+  "description": "4D\u65f6\u57df\u89c4\u5212 + \u6f6e\u6c50/\u6c34\u4f4d\u8054\u52a8 + ETA/\u7a97\u53e3",
+  "tasks": {
+    "T7.1": {
+      "name": "S-104 \u6c34\u4f4d/\u6f6e\u6c50\u9002\u914d",
+      "status": "completed",
+      "files": [
+        "lib/enc/s104_adapter.py"
+      ],
+      "tests_passed": true,
+      "acceptance": "\u7ed9\u5b9a\u65f6\u523b\u4e0e\u70b9\u4f4d\u80fd\u8fd4\u56de\u6c34\u4f4d\uff1b\u63d2\u503c/\u5916\u63a8\u7b56\u7565\u58f0\u660e\u6e05\u695a"
+    },
+    "T7.2": {
+      "name": "4D \u6210\u672c\u573a\u4e0e\u641c\u7d22",
+      "status": "completed",
+      "files": [
+        "lib/planner/planner_4d.py"
+      ],
+      "tests_passed": true,
+      "acceptance": "\u76f8\u540c\u7a7a\u95f4\u8d77\u7ec8\u70b9\uff0c\u56e0\u6f6e\u7a97/\u6d41\u573a\u53d8\u5316\u5f97\u5230\u4e0d\u540c\u53d1\u822a\u65f6\u523b/\u901f\u5ea6\u7b56\u7565"
+    },
+    "T7.3": {
+      "name": "ETA/\u7a97\u53e3\u4f18\u5316\u5668",
+      "status": "completed",
+      "files": [
+        "lib/eta/optimizer.py"
+      ],
+      "tests_passed": true,
+      "acceptance": "\u7ed9\u5b9a [E, L] \u5230\u8fbe\u7a97\u53e3\uff0c\u4f18\u5316\u540e ETA \u2208 [E, L]"
+    },
+    "T7.4": {
+      "name": "UKC \u52a8\u6001\u5316",
+      "status": "completed",
+      "files": [
+        "lib/plugins/ukc_dynamic.py"
+      ],
+      "tests_passed": true,
+      "acceptance": "\u62a5\u544a\u5305\u542b\u65f6\u95f4/\u91cc\u7a0b\u8f74\u4e0b\u6700\u5c0f UKC \u66f2\u7ebf"
+    }
+  },
+  "test_results": {
+    "s104_adapter": "PASSED",
+    "planner_4d": "PASSED",
+    "eta_optimizer": "PASSED",
+    "ukc_dynamic": "PASSED"
+  },
+  "capabilities": {
+    "time_domain": "4D planning with time as dimension",
+    "tide_integration": "S-104 water level time series",
+    "eta_optimization": "Speed profile for arrival windows",
+    "dynamic_ukc": "Time-varying UKC with tide/squat"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "flags": {
+    "version_management": true,
+    "config_management": true,
+    "deployment_ready": true,
+    "api_documentation": true
+  },
+  "release": {
+    "version": "1.0.0",
+    "stage": "production",
+    "api_version": "v1",
+    "min_python": "3.8"
+  }
+}

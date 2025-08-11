@@ -1,0 +1,14 @@
+{
+  "flags": {
+    "tile_management": true,
+    "cache_strategy": true,
+    "dynamic_loading": true,
+    "prefetch": true
+  },
+  "tiling": {
+    "tile_size_deg": 1.0,
+    "cache_size_mb": 500,
+    "prefetch_radius": 2,
+    "compression": "lz4"
+  }
+}

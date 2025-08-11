@@ -1,11 +1,5 @@
 feature_flags:
-  s101_adapter: true
-  s164_ci: true
-  s421_export: true
-  s421_roundtrip: true
-  incr_replan: true
-  s102_adapter: true
-  s111_currents: true
-  s124_warnings: true
+  four_d_planner: true
+  s104_tides: true
+  eta_optimizer: true
   ukc_plugin: true
-  stress_fuzzer: true

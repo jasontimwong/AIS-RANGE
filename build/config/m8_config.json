@@ -1,0 +1,14 @@
+{
+  "flags": {
+    "safety_shield": true,
+    "sensor_failover": true,
+    "fault_injection": true,
+    "auto_recovery": true
+  },
+  "safety": {
+    "cbf_enabled": true,
+    "max_response_ms": 100,
+    "fallback_mode": "conservative",
+    "redundancy_level": 2
+  }
+}
