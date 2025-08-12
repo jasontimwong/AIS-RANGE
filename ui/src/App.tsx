@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { CanvasMap, MapRef, LonLat } from "./components/CanvasMap";
 import { getRoute, getEncLite, ValidationReportV1, exportRTZ, importRTZ } from "./api/client";
 import { ColorScheme } from "./utils/ecdisColors";
+import { AISLayer } from "./components/AISLayer";
+import { useAISData } from "./hooks/useAISData";
 
 export function App() {
   const mapRef = useRef<MapRef>(null);
@@ -12,6 +14,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [colorScheme, setColorScheme] = useState<ColorScheme>('DAY');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aisEnabled, setAisEnabled] = useState(false);
+  const [mapState, setMapState] = useState({ center: [121.508, 31.23] as LonLat, zoom: 8 });
+  const { targets, connected } = useAISData(aisEnabled);
 
   useEffect(() => {
     (async () => {
@@ -339,6 +344,25 @@ export function App() {
           </ul>
         </div>
 
+        {/* AIS控制 */}
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>AIS系统</h3>
+          <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+            <input 
+              type="checkbox" 
+              checked={aisEnabled}
+              onChange={e => setAisEnabled(e.target.checked)}
+              style={{ marginRight: "8px" }}
+            /> 
+            🚢 启用AIS显示
+          </label>
+          {aisEnabled && (
+            <div style={{ marginTop: "8px", fontSize: "12px", color: "#5e81ac" }}>
+              {connected ? `✅ 已连接 - ${targets.length}个目标` : '⏳ 连接中...'}
+            </div>
+          )}
+        </div>
+
         {/* 校核报告 */}
         <div style={{ marginBottom: "24px" }}>
           <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>合规校核</h3>
@@ -462,6 +486,17 @@ export function App() {
           enc={enc}
           route={route}
           style={{ width: "100%", height: "100%", display: "block" }}
+          onViewChange={(center, zoom) => setMapState({ center, zoom })}
+        />
+        
+        {/* AIS图层 */}
+        <AISLayer
+          targets={targets}
+          center={mapState.center}
+          zoom={mapState.zoom}
+          width={window.innerWidth - 320}
+          height={window.innerHeight}
+          visible={aisEnabled}
         />
         
         {/* 地图控制按钮 */}

@@ -3,7 +3,7 @@ ECDIS Planner REST API Service
 FastAPI-based service for route planning, validation, and RTZ export.
 """
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -921,6 +921,165 @@ async def update_config(config_update: Dict[str, Any]):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# AIS WebSocket管理
+class AISWebSocketManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+        self.ais_manager = None
+        self.risk_assessor = None
+        
+    def initialize(self):
+        """初始化AIS组件"""
+        from lib.ais.manager import AISManager
+        from lib.ais.risk_assessor import AISRiskAssessor
+        
+        self.ais_manager = AISManager()
+        self.risk_assessor = AISRiskAssessor()
+        self.ais_manager.subscribe(self._on_ais_update)
+        self.ais_manager.start()
+        logger.info("AIS系统已启动")
+        
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        
+    async def broadcast(self, data: dict):
+        """广播数据给所有连接"""
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(data)
+            except:
+                pass
+                
+    def _on_ais_update(self, targets):
+        """AIS更新回调"""
+        import asyncio
+        # 转换为列表
+        target_list = [t.to_dict() for t in targets.values()]
+        data = {
+            "type": "ais_update",
+            "targets": target_list,
+            "count": len(target_list)
+        }
+        # 创建异步任务广播
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self.broadcast(data))
+        except RuntimeError:
+            pass  # 忽略事件循环错误
+
+# 创建WebSocket管理器
+ws_manager = AISWebSocketManager()
+
+@app.on_event("startup")
+async def startup_event():
+    """启动时初始化AIS系统"""
+    ws_manager.initialize()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """关闭时停止AIS系统"""
+    if ws_manager.ais_manager:
+        ws_manager.ais_manager.stop()
+
+@app.websocket("/ws/ais")
+async def websocket_endpoint(websocket: WebSocket):
+    """AIS数据WebSocket端点"""
+    await ws_manager.connect(websocket)
+    try:
+        # 立即发送当前数据（发送所有目标，不限制范围）
+        if ws_manager.ais_manager:
+            ws_manager.ais_manager.update_targets()  # 确保数据最新
+            targets = ws_manager.ais_manager.get_all_targets()
+            target_list = [t.to_dict() for t in targets]
+            await websocket.send_json({
+                "type": "ais_update",
+                "targets": target_list,
+                "count": len(target_list)
+            })
+        
+        # 创建定期发送任务
+        import asyncio
+        async def send_updates():
+            while True:
+                await asyncio.sleep(1)  # 每秒更新
+                if ws_manager.ais_manager:
+                    ws_manager.ais_manager.update_targets()  # 更新位置
+                    targets = ws_manager.ais_manager.get_all_targets()
+                    target_list = [t.to_dict() for t in targets]
+                    try:
+                        await websocket.send_json({
+                            "type": "ais_update",
+                            "targets": target_list,
+                            "count": len(target_list)
+                        })
+                    except:
+                        break
+        
+        # 启动更新任务
+        update_task = asyncio.create_task(send_updates())
+        
+        # 处理客户端消息
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        update_task.cancel()
+        ws_manager.disconnect(websocket)
+
+# AIS REST API
+@app.get("/api/ais/targets")
+async def get_ais_targets(lat: float = 31.23, lon: float = 121.508, range_nm: float = 100):
+    """获取指定范围内的AIS目标"""
+    if not ws_manager.ais_manager:
+        raise HTTPException(status_code=503, detail="AIS system not initialized")
+    
+    targets = ws_manager.ais_manager.get_targets_in_range((lat, lon), range_nm)
+    return {
+        "center": {"lat": lat, "lon": lon},
+        "range_nm": range_nm,
+        "targets": [t.to_dict() for t in targets],
+        "count": len(targets)
+    }
+
+@app.post("/api/ais/risk")
+async def assess_risk(request: Dict[str, Any]):
+    """评估碰撞风险"""
+    if not ws_manager.risk_assessor:
+        raise HTTPException(status_code=503, detail="Risk assessor not initialized")
+    
+    own_lat = request.get("lat", 31.23)
+    own_lon = request.get("lon", 121.508)
+    own_sog = request.get("sog", 15.0)
+    own_cog = request.get("cog", 180.0)
+    
+    targets = ws_manager.ais_manager.get_targets_in_range((own_lat, own_lon), 100)
+    assessments = ws_manager.risk_assessor.assess_risks(
+        own_lat, own_lon, own_sog, own_cog, targets
+    )
+    
+    return {
+        "vessel_position": {"lat": own_lat, "lon": own_lon},
+        "vessel_motion": {"sog": own_sog, "cog": own_cog},
+        "assessments": [
+            {
+                "mmsi": a.target.mmsi,
+                "name": a.target.name,
+                "cpa": a.cpa_result.cpa,
+                "tcpa": a.cpa_result.tcpa,
+                "risk_level": a.cpa_result.risk_level,
+                "encounter": a.encounter_type.value,
+                "action": a.recommended_action
+            }
+            for a in assessments[:10]  # 前10个
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
