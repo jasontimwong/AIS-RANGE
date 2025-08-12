@@ -7,7 +7,8 @@ export type LonLat = [number, number];
 type Props = { 
   enc: any; 
   route: LonLat[]; 
-  style?: React.CSSProperties; 
+  style?: React.CSSProperties;
+  onViewChange?: (center: LonLat, zoom: number) => void;
 };
 
 export type MapRef = { 
@@ -287,6 +288,11 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       state.current.last = [e.clientX, e.clientY];
       state.current.needsRedraw = true;
       requestRedraw();
+      
+      // 通知父组件视图变化（实时同步AIS图层）
+      if (props.onViewChange) {
+        props.onViewChange(vp.current.center, vp.current.zoom);
+      }
     };
 
     const onUp = () => {
@@ -336,6 +342,10 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       if (moved) {
         state.current.needsRedraw = true;
         requestRedraw();
+        // 通知父组件视图变化
+        if (props.onViewChange) {
+          props.onViewChange(vp.current.center, vp.current.zoom);
+        }
       }
     };
 
@@ -379,6 +389,11 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         touchStart = { x: touch.clientX, y: touch.clientY };
         state.current.needsRedraw = true;
         requestRedraw();
+        
+        // 通知父组件视图变化（实时同步AIS图层）
+        if (props.onViewChange) {
+          props.onViewChange(vp.current.center, vp.current.zoom);
+        }
       } else if (e.touches.length === 2 && touchStart.dist) {
         // 双指缩放
         const t1 = e.touches[0];

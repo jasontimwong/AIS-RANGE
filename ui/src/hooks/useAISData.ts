@@ -21,7 +21,7 @@ export const useAISData = (enabled: boolean = false) => {
     // 建立WebSocket连接
     const connect = () => {
       try {
-        const ws = new WebSocket('ws://localhost:8000/ws/ais');
+        const ws = new WebSocket('ws://localhost:3000/ws/ais');
         
         ws.onopen = () => {
           console.log('AIS WebSocket connected');
@@ -72,7 +72,7 @@ export const useAISData = (enabled: boolean = false) => {
   const getTargetsInRange = async (lat: number, lon: number, range: number) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/ais/targets?lat=${lat}&lon=${lon}&range_nm=${range}`
+        `/api/ais/targets?lat=${lat}&lon=${lon}&range_nm=${range}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -87,7 +87,7 @@ export const useAISData = (enabled: boolean = false) => {
   // 评估风险
   const assessRisk = async (lat: number, lon: number, sog: number, cog: number) => {
     try {
-      const response = await fetch('http://localhost:8000/api/ais/risk', {
+      const response = await fetch('/api/ais/risk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lon, sog, cog })
