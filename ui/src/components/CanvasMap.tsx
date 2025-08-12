@@ -7,6 +7,8 @@ export type LonLat = [number, number];
 type Props = { 
   enc: any; 
   route: LonLat[]; 
+  dynamicRoute?: LonLat[];
+  dynamicRouteEnabled?: boolean;
   style?: React.CSSProperties;
   onViewChange?: (center: LonLat, zoom: number) => void;
 };
@@ -824,45 +826,60 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
     }
 
-    // 规划航线（增强版RTZ可视化）
+    // 规划航线（支持动态路径的双路径可视化）
     if (layers.current.route && props.route?.length > 1) {
-      // 航线安全走廊（XTD）- 绘制在主线之前
-      ctx.strokeStyle = "rgba(163, 190, 140, 0.3)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 3]);
+      const showDynamicRoute = props.dynamicRouteEnabled && props.dynamicRoute?.length > 1;
       
-      for (let i = 0; i < props.route.length - 1; i++) {
-        const [x1, y1] = project(props.route[i]);
-        const [x2, y2] = project(props.route[i + 1]);
+      if (!showDynamicRoute) {
+        // 标准模式：显示XTD走廊
+        ctx.strokeStyle = "rgba(163, 190, 140, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 3]);
         
-        // 计算垂直于航线的XTD走廊边界
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.hypot(dx, dy);
-        if (len > 0) {
-          const xtdWidth = 20; // 像素宽度，实际应根据XTD值计算
-          const perpX = (-dy / len) * xtdWidth;
-          const perpY = (dx / len) * xtdWidth;
+        for (let i = 0; i < props.route.length - 1; i++) {
+          const [x1, y1] = project(props.route[i]);
+          const [x2, y2] = project(props.route[i + 1]);
           
-          // 绘制走廊边界
-          ctx.beginPath();
-          ctx.moveTo(x1 + perpX, y1 + perpY);
-          ctx.lineTo(x2 + perpX, y2 + perpY);
-          ctx.stroke();
-          
-          ctx.beginPath();
-          ctx.moveTo(x1 - perpX, y1 - perpY);
-          ctx.lineTo(x2 - perpX, y2 - perpY);
-          ctx.stroke();
+          // 计算垂直于航线的XTD走廊边界
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const len = Math.hypot(dx, dy);
+          if (len > 0) {
+            const xtdWidth = 20; // 像素宽度，实际应根据XTD值计算
+            const perpX = (-dy / len) * xtdWidth;
+            const perpY = (dx / len) * xtdWidth;
+            
+            // 绘制走廊边界
+            ctx.beginPath();
+            ctx.moveTo(x1 + perpX, y1 + perpY);
+            ctx.lineTo(x2 + perpX, y2 + perpY);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x1 - perpX, y1 - perpY);
+            ctx.lineTo(x2 - perpX, y2 - perpY);
+            ctx.stroke();
+          }
         }
+        ctx.setLineDash([]);
       }
-      ctx.setLineDash([]);
 
-      // 航线主线（粗线）
-      ctx.strokeStyle = "#a3be8c";
-      ctx.lineWidth = 4;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+      // 原始航线
+      if (showDynamicRoute) {
+        // 动态模式：原路径显示为蓝色虚线
+        ctx.strokeStyle = "rgba(136, 192, 208, 0.7)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      } else {
+        // 标准模式：原路径显示为绿色实线
+        ctx.strokeStyle = "#a3be8c";
+        ctx.lineWidth = 4;
+        ctx.setLineDash([]);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
       
       ctx.beginPath();
       let first = true;
@@ -876,9 +893,61 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         }
       }
       ctx.stroke();
+      ctx.setLineDash([]); // 重置虚线
 
-      // 航线方向箭头
-      ctx.strokeStyle = "#5e81ac";
+      // 动态路径（如果启用）
+      if (showDynamicRoute) {
+        ctx.strokeStyle = "#a3be8c"; // 绿色
+        ctx.lineWidth = 4;
+        ctx.setLineDash([]);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        
+        ctx.beginPath();
+        let firstDynamic = true;
+        for (const p of props.dynamicRoute) {
+          const [x, y] = project(p);
+          if (firstDynamic) {
+            ctx.moveTo(x, y);
+            firstDynamic = false;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+        
+        // 动态路径的方向箭头（橙色）
+        ctx.strokeStyle = "#d08770";
+        ctx.lineWidth = 2;
+        for (let i = 0; i < props.dynamicRoute.length - 1; i++) {
+          const [x1, y1] = project(props.dynamicRoute[i]);
+          const [x2, y2] = project(props.dynamicRoute[i + 1]);
+          
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          
+          // 计算航向箭头
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const arrowLen = 8;
+          const arrowAngle = Math.PI / 6;
+          
+          ctx.beginPath();
+          ctx.moveTo(midX, midY);
+          ctx.lineTo(
+            midX - arrowLen * Math.cos(angle - arrowAngle),
+            midY - arrowLen * Math.sin(angle - arrowAngle)
+          );
+          ctx.moveTo(midX, midY);
+          ctx.lineTo(
+            midX - arrowLen * Math.cos(angle + arrowAngle),
+            midY - arrowLen * Math.sin(angle + arrowAngle)
+          );
+          ctx.stroke();
+        }
+      }
+
+      // 原始航线方向箭头
+      ctx.strokeStyle = showDynamicRoute ? "rgba(94, 129, 172, 0.6)" : "#5e81ac";
       ctx.lineWidth = 2;
       for (let i = 0; i < props.route.length - 1; i++) {
         const [x1, y1] = project(props.route[i]);

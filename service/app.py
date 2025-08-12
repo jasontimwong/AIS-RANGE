@@ -928,14 +928,17 @@ class AISWebSocketManager:
         self.active_connections: List[WebSocket] = []
         self.ais_manager = None
         self.risk_assessor = None
+        self.dynamic_planner = None
         
     def initialize(self):
         """初始化AIS组件"""
         from lib.ais.manager import AISManager
         from lib.ais.risk_assessor import AISRiskAssessor
+        from lib.route.dynamic_planner import DynamicRoutePlanner
         
         self.ais_manager = AISManager()
         self.risk_assessor = AISRiskAssessor()
+        self.dynamic_planner = DynamicRoutePlanner(self.ais_manager)
         self.ais_manager.subscribe(self._on_ais_update)
         self.ais_manager.start()
         logger.info("AIS系统已启动")
@@ -1080,6 +1083,80 @@ async def assess_risk(request: Dict[str, Any]):
             for a in assessments[:10]  # 前10个
         ]
     }
+
+# 动态路径规划API
+@app.post("/api/route/initialize")
+async def initialize_dynamic_route(route_data: dict):
+    """初始化动态路径"""
+    if not ws_manager.dynamic_planner:
+        raise HTTPException(status_code=503, detail="Dynamic route planner not initialized")
+    
+    waypoints = route_data.get("waypoints", [])
+    if not waypoints:
+        raise HTTPException(status_code=400, detail="No waypoints provided")
+    
+    # 转换为经纬度坐标列表
+    coord_waypoints = [(wp["lat"], wp["lon"]) for wp in waypoints]
+    
+    dynamic_route = ws_manager.dynamic_planner.initialize_route(coord_waypoints)
+    
+    return {
+        "status": "initialized",
+        "original_waypoints": len(coord_waypoints),
+        "dynamic_waypoints": len(dynamic_route.waypoints),
+        "last_update": dynamic_route.last_update.isoformat()
+    }
+
+@app.get("/api/route/dynamic")
+async def get_dynamic_route(current_lat: float = 31.23, current_lon: float = 121.508):
+    """获取当前动态路径"""
+    if not ws_manager.dynamic_planner:
+        raise HTTPException(status_code=503, detail="Dynamic route planner not initialized")
+    
+    current_position = (current_lat, current_lon)
+    dynamic_route = ws_manager.dynamic_planner.update_dynamic_route(current_position)
+    
+    if not dynamic_route:
+        raise HTTPException(status_code=404, detail="No dynamic route available")
+    
+    comparison_data = ws_manager.dynamic_planner.get_route_comparison()
+    
+    return {
+        "status": "active",
+        "current_position": {"lat": current_lat, "lon": current_lon},
+        "route_comparison": comparison_data,
+        "threat_count": len(dynamic_route.active_threats),
+        "last_update": dynamic_route.last_update.isoformat()
+    }
+
+@app.post("/api/route/update")
+async def force_route_update(position_data: dict):
+    """强制更新动态路径"""
+    if not ws_manager.dynamic_planner:
+        raise HTTPException(status_code=503, detail="Dynamic route planner not initialized")
+    
+    current_lat = position_data.get("lat", 31.23)
+    current_lon = position_data.get("lon", 121.508)
+    current_position = (current_lat, current_lon)
+    
+    dynamic_route = ws_manager.dynamic_planner.update_dynamic_route(current_position)
+    
+    if dynamic_route:
+        # 通过WebSocket广播更新
+        route_data = ws_manager.dynamic_planner.get_route_comparison()
+        await ws_manager.broadcast({
+            "type": "route_update",
+            "route_comparison": route_data,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return {
+            "status": "updated",
+            "changes_made": len(dynamic_route.active_threats) > 0,
+            "active_threats": len(dynamic_route.active_threats)
+        }
+    
+    return {"status": "no_update_needed"}
 
 if __name__ == "__main__":
     import uvicorn

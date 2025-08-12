@@ -94,3 +94,15 @@ class AISTarget:
             'length': self.length,
             'width': self.width
         }
+
+# 导入其他组件
+from .manager import AISManager
+from .risk_assessor import AISRiskAssessor, RiskAssessment
+from .parser import AISParser
+from .cpa_calculator import AISCPACalculator, CPAResult
+
+__all__ = [
+    'AISTarget', 'NavStatus', 'ShipType', 
+    'AISManager', 'AISRiskAssessor', 'RiskAssessment',
+    'AISParser', 'AISCPACalculator', 'CPAResult'
+]

@@ -15,7 +15,10 @@ export function App() {
   const [colorScheme, setColorScheme] = useState<ColorScheme>('DAY');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [aisEnabled, setAisEnabled] = useState(false);
+  const [dynamicRouteEnabled, setDynamicRouteEnabled] = useState(false);
   const [mapState, setMapState] = useState({ center: [121.508, 31.23] as LonLat, zoom: 8 });
+  const [dynamicRoute, setDynamicRoute] = useState<LonLat[]>([]);
+  const [routeComparison, setRouteComparison] = useState<any>(null);
   const { targets, connected } = useAISData(aisEnabled);
 
   useEffect(() => {
@@ -89,6 +92,60 @@ export function App() {
       }
     })();
   }, []);
+
+  // 动态路径管理
+  useEffect(() => {
+    if (!dynamicRouteEnabled || route.length === 0) {
+      setDynamicRoute([]);
+      setRouteComparison(null);
+      return;
+    }
+
+    // 初始化动态路径
+    const initializeDynamicRoute = async () => {
+      try {
+        const waypoints = route.map(([lon, lat]) => ({ lat, lon }));
+        const response = await fetch('/api/route/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ waypoints })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('动态路径已初始化:', data);
+          
+          // 获取动态路径数据
+          fetchDynamicRoute();
+        }
+      } catch (error) {
+        console.error('初始化动态路径失败:', error);
+      }
+    };
+
+    initializeDynamicRoute();
+
+    // 定期更新动态路径
+    const updateInterval = setInterval(fetchDynamicRoute, 5000);
+    return () => clearInterval(updateInterval);
+  }, [dynamicRouteEnabled, route]);
+
+  // 获取动态路径数据
+  const fetchDynamicRoute = async () => {
+    try {
+      const response = await fetch(`/api/route/dynamic?current_lat=${mapState.center[1]}&current_lon=${mapState.center[0]}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.route_comparison) {
+          setRouteComparison(data.route_comparison);
+          const dynamicWaypoints = data.route_comparison.dynamic_route || [];
+          setDynamicRoute(dynamicWaypoints.map(([lat, lon]: [number, number]) => [lon, lat] as LonLat));
+        }
+      }
+    } catch (error) {
+      console.error('获取动态路径失败:', error);
+    }
+  };
 
   // 添加键盘快捷键支持
   useEffect(() => {
@@ -363,6 +420,37 @@ export function App() {
           )}
         </div>
 
+        {/* 动态避让控制 */}
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>动态避让</h3>
+          <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+            <input 
+              type="checkbox" 
+              checked={dynamicRouteEnabled}
+              onChange={e => setDynamicRouteEnabled(e.target.checked)}
+              style={{ marginRight: "8px" }}
+              disabled={!aisEnabled}
+            /> 
+            🧭 启用动态路径规划
+          </label>
+          {dynamicRouteEnabled && (
+            <div style={{ marginTop: "8px", fontSize: "12px" }}>
+              {routeComparison ? (
+                <div>
+                  <div style={{ color: "#a3be8c" }}>
+                    ✅ 路径规划活跃 - {routeComparison.active_threats?.length || 0}个威胁
+                  </div>
+                  <div style={{ color: "#88c0d0", marginTop: "4px" }}>
+                    🔵 原路径 / 🟢 动态路径
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: "#5e81ac" }}>⏳ 初始化中...</div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* 校核报告 */}
         <div style={{ marginBottom: "24px" }}>
           <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>合规校核</h3>
@@ -485,6 +573,8 @@ export function App() {
           ref={mapRef}
           enc={enc}
           route={route}
+          dynamicRoute={dynamicRoute}
+          dynamicRouteEnabled={dynamicRouteEnabled}
           style={{ width: "100%", height: "100%", display: "block" }}
           onViewChange={(center, zoom) => setMapState({ center, zoom })}
         />
