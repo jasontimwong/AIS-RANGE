@@ -1,0 +1,4 @@
+{
+  "coords": [[0.005,0.005],[0.010,0.007],[0.015,0.010],[0.020,0.012],[0.025,0.015]],
+  "report": {"clause_refs":[{"standard":"IMO MSC.232(82)","clause":"4.7.1","status":"COMPLIANT"}],"min_ukc_m":3.5,"alerts":[{"level":"B","msg":"demo"}]}
+}

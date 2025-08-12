@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fetch SeaMark Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/osmtogeojson@3.0.0-beta.4/osmtogeojson.js"></script>
+</head>
+<body>
+    <h1>Fetching OpenSeaMap Navigation Marks</h1>
+    <div id="status"></div>
+    <pre id="output"></pre>
+
+    <script>
+        const status = document.getElementById('status');
+        const output = document.getElementById('output');
+
+        // 上海到新加坡航线区域边界
+        // 北纬 35° (上海北部), 南纬 2° (新加坡南部)
+        // 东经 100° (马六甲海峡), 东经 125° (上海东部)
+        const bbox = {
+            south: -2,
+            west: 100,
+            north: 35,
+            east: 125
+        };
+
+        // Overpass API 查询
+        const query = `
+[out:json][timeout:30];
+(
+  // 灯塔
+  node["seamark:type"="light_major"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="light_minor"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 浮标
+  node["seamark:type"="buoy_lateral"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="buoy_cardinal"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="buoy_safe_water"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="buoy_special_purpose"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 立标
+  node["seamark:type"="beacon_lateral"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="beacon_cardinal"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="beacon_safe_water"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 危险物
+  node["seamark:type"="wreck"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="rock"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="obstruction"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 限制区域
+  way["seamark:type"="restricted_area"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  way["seamark:type"="fairway"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  way["seamark:type"="separation_zone"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 锚地
+  way["seamark:type"="anchorage"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  node["seamark:type"="anchorage"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  
+  // 港口
+  node["seamark:type"="harbour"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+  way["seamark:type"="harbour"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});
+);
+out body;
+>;
+out skel qt;
+        `.trim();
+
+        async function fetchSeamarks() {
+            status.textContent = '正在查询 Overpass API...';
+            
+            try {
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query,
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const osmData = await response.json();
+                status.textContent = `获取到 ${osmData.elements.length} 个要素，正在转换为 GeoJSON...`;
+
+                // 转换为 GeoJSON
+                const geojson = osmtogeojson(osmData);
+                
+                // 处理和分类数据
+                const processedData = processSeamarks(geojson);
+                
+                status.textContent = `处理完成！找到 ${processedData.lights.length} 个灯塔, ${processedData.buoys.length} 个浮标, ${processedData.dangers.length} 个危险物`;
+                
+                // 保存数据
+                const dataStr = JSON.stringify(processedData, null, 2);
+                output.textContent = dataStr;
+                
+                // 创建下载链接
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'asia-pacific-seamarks.json';
+                a.textContent = '下载 asia-pacific-seamarks.json';
+                a.style.display = 'block';
+                a.style.marginTop = '20px';
+                document.body.appendChild(a);
+                
+            } catch (error) {
+                status.textContent = `错误: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+
+        function processSeamarks(geojson) {
+            const lights = [];
+            const buoys = [];
+            const beacons = [];
+            const dangers = [];
+            const areas = [];
+            const anchorages = [];
+            const harbours = [];
+
+            geojson.features.forEach(feature => {
+                const props = feature.properties;
+                const coords = feature.geometry.coordinates;
+                
+                if (!props['seamark:type']) return;
+                
+                const seamarkType = props['seamark:type'];
+                const basicInfo = {
+                    type: seamarkType,
+                    coords: coords,
+                    name: props['seamark:name'] || props.name || '',
+                    properties: {}
+                };
+
+                // 提取相关属性
+                Object.keys(props).forEach(key => {
+                    if (key.startsWith('seamark:')) {
+                        basicInfo.properties[key] = props[key];
+                    }
+                });
+
+                // 分类
+                if (seamarkType.includes('light')) {
+                    lights.push({
+                        ...basicInfo,
+                        color: props['seamark:light:colour'] || 'white',
+                        character: props['seamark:light:character'] || '',
+                        range: props['seamark:light:range'] || ''
+                    });
+                } else if (seamarkType.includes('buoy')) {
+                    buoys.push({
+                        ...basicInfo,
+                        category: props['seamark:buoy_lateral:category'] || 
+                                 props['seamark:buoy_cardinal:category'] || '',
+                        color: props['seamark:buoy_lateral:colour'] || 
+                              props['seamark:buoy_cardinal:colour'] || ''
+                    });
+                } else if (seamarkType.includes('beacon')) {
+                    beacons.push({
+                        ...basicInfo,
+                        category: props['seamark:beacon_lateral:category'] || 
+                                 props['seamark:beacon_cardinal:category'] || '',
+                        color: props['seamark:beacon_lateral:colour'] || 
+                              props['seamark:beacon_cardinal:colour'] || ''
+                    });
+                } else if (seamarkType === 'wreck' || seamarkType === 'rock' || seamarkType === 'obstruction') {
+                    dangers.push({
+                        ...basicInfo,
+                        category: props['seamark:wreck:category'] || 
+                                 props['seamark:rock:water_level'] || '',
+                        dangerous: props['seamark:danger'] === 'yes'
+                    });
+                } else if (seamarkType === 'restricted_area' || seamarkType === 'fairway' || seamarkType === 'separation_zone') {
+                    areas.push(basicInfo);
+                } else if (seamarkType === 'anchorage') {
+                    anchorages.push({
+                        ...basicInfo,
+                        category: props['seamark:anchorage:category'] || ''
+                    });
+                } else if (seamarkType === 'harbour') {
+                    harbours.push({
+                        ...basicInfo,
+                        category: props['seamark:harbour:category'] || ''
+                    });
+                }
+            });
+
+            return {
+                lights,
+                buoys,
+                beacons,
+                dangers,
+                areas,
+                anchorages,
+                harbours,
+                metadata: {
+                    source: 'OpenSeaMap/OpenStreetMap',
+                    date: new Date().toISOString(),
+                    bbox: [bbox.west, bbox.south, bbox.east, bbox.north],
+                    count: {
+                        lights: lights.length,
+                        buoys: buoys.length,
+                        beacons: beacons.length,
+                        dangers: dangers.length,
+                        areas: areas.length,
+                        anchorages: anchorages.length,
+                        harbours: harbours.length
+                    }
+                }
+            };
+        }
+
+        // 开始获取数据
+        fetchSeamarks();
+    </script>
+</body>
+</html>

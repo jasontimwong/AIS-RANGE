@@ -61,6 +61,13 @@
   - `GET /basemap/status` 本地底图资源可用性摘要
 - 以上为纯只读与可选挂载，不影响现有业务逻辑，随分支可随时回退
 
+### 🗺️ UI 可视化增强
+- 在 `ui/src/components/CanvasMap.tsx` 增加本地瓦片叠加（只读）：
+  - 新增图层开关：`basemap`（OSM）、`seamarks`（OpenSeaMap）
+  - 本地 XYZ 瓦片源：`/static/osm/{z}/{x}/{y}.png`、`/static/openseamap/{z}/{x}/{y}.png`
+  - 低缩放样本自动匹配（z=0..2），不影响原有 ENC-lite 与航线渲染
+  - 默认关闭 basemap/seamarks，避免误连外部瓦片（截图所示 Access blocked 风险）；仅使用 `ui/public/tiles/**` 的离线样本
+
 
 ## [3.1.0] - 2025-08-11
 

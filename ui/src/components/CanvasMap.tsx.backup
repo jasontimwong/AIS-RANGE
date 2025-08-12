@@ -1,6 +1,5 @@
-import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { useEffect, useImperativeHandle, useRef } from "react";
 import { lonLatToXY, xyToLonLat, Viewport } from "../proj/mercator";
-import { ECDIS_PALETTE, ColorScheme, getDepthColor, DEFAULT_SAFETY_SETTINGS } from "../utils/ecdisColors";
 
 export type LonLat = [number, number];
 
@@ -13,29 +12,24 @@ type Props = {
 export type MapRef = { 
   toggle(layer: string, on: boolean): void; 
   zoomTo(bounds: [LonLat, LonLat]): void;
-  centerOnRoute(): void;
-  zoomToFit(): void;
-  setColorScheme(scheme: ColorScheme): void;
 };
 
 export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>('DAY');
-  const bathymetryData = useRef<any>(null);
-  const seamarksData = useRef<any>(null);
   // Prefer local static tiles served by Vite from /public (no API dependency)
-  // Use Vite's BASE_URL environment variable for correct path resolution
-  // In development: BASE_URL = '/ui/' (from vite.config.js)
-  // In production: BASE_URL will be set according to deployment configuration
-  const BASE_URL = import.meta.env.BASE_URL || '/';
-  const TILE_BASE = `${BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL}/tiles`;
+  // Respect Vite base path (e.g., "/ui/") so tiles resolve under the same base
+  // e.g. when base = "/ui/", tiles live at "/ui/tiles/..."
+  // import.meta.env.BASE_URL is available in Vite
+  // Fallback to "/" if undefined
+  // Strip trailing slash when joining
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Compute tiles base path based on current pathname (dev also uses base '/ui/')
+  const devBase = window.location.pathname.startsWith('/ui/') ? '/ui' : '';
+  const TILE_BASE = `${devBase}/tiles`;
   
   const layers = useRef<Record<string, boolean>>({
-    geography: true,  // 真实地理环境图层
-    bathymetry: true, // 水深等深线
-    seamark: true,    // 助航标志
-    localbase: false,  // 改为默认关闭
+    localbase: true,
     basemap: false,
     seamarks: false,
     enc: true, 
@@ -60,9 +54,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
 
   // Simple in-memory tile cache
   const tileCache = useRef<Map<string, HTMLImageElement>>(new Map());
-  
-  // GeoJSON地理数据缓存
-  const geoData = useRef<any>(null);
 
   useImperativeHandle(ref, () => ({
     toggle: (k, on) => { 
@@ -82,71 +73,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       const range = Math.max(lonRange, latRange);
       vp.current.zoom = Math.max(2, Math.min(18, 16 - Math.log2(range * 100)));
       
-      state.current.needsRedraw = true;
-      requestRedraw();
-    },
-    centerOnRoute: () => {
-      // 定位到航迹中心
-      if (!props.route || props.route.length === 0) return;
-      
-      let sumLon = 0, sumLat = 0;
-      props.route.forEach(([lon, lat]) => {
-        sumLon += lon;
-        sumLat += lat;
-      });
-      
-      vp.current.center = [
-        sumLon / props.route.length,
-        sumLat / props.route.length
-      ];
-      
-      state.current.needsRedraw = true;
-      requestRedraw();
-    },
-    zoomToFit: () => {
-      // 自动缩放以适应整个航迹
-      if (!props.route || props.route.length === 0) return;
-      
-      let minLon = Infinity, maxLon = -Infinity;
-      let minLat = Infinity, maxLat = -Infinity;
-      
-      props.route.forEach(([lon, lat]) => {
-        minLon = Math.min(minLon, lon);
-        maxLon = Math.max(maxLon, lon);
-        minLat = Math.min(minLat, lat);
-        maxLat = Math.max(maxLat, lat);
-      });
-      
-      // 添加15%的边距
-      const lonMargin = (maxLon - minLon) * 0.15;
-      const latMargin = (maxLat - minLat) * 0.15;
-      
-      minLon -= lonMargin;
-      maxLon += lonMargin;
-      minLat -= latMargin;
-      maxLat += latMargin;
-      
-      // 计算中心点
-      vp.current.center = [
-        (minLon + maxLon) / 2,
-        (minLat + maxLat) / 2
-      ];
-      
-      // 计算合适的缩放级别（细化）
-      const lonRange = maxLon - minLon;
-      const latRange = maxLat - minLat;
-      const maxRange = Math.max(lonRange, latRange);
-      
-      // 使用更精确的公式计算缩放级别
-      // zoom = log2(360 / maxRange) 的近似
-      const targetZoom = Math.floor(8.5 - Math.log2(maxRange));
-      vp.current.zoom = Math.max(5, Math.min(18, targetZoom));
-      
-      state.current.needsRedraw = true;
-      requestRedraw();
-    },
-    setColorScheme: (scheme: ColorScheme) => {
-      setColorSchemeState(scheme);
       state.current.needsRedraw = true;
       requestRedraw();
     }
@@ -173,73 +99,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
     });
   };
-
-  // 加载地理数据
-  useEffect(() => {
-    const loadGeoData = async () => {
-      try {
-        // 优先加载真实的亚太地区Natural Earth数据
-        const asiaPacificResponse = await fetch(`${BASE_URL}geo/asia-pacific-land.json`);
-        if (asiaPacificResponse.ok) {
-          geoData.current = await asiaPacificResponse.json();
-          state.current.needsRedraw = true;
-          requestRedraw();
-        }
-      } catch (error) {
-        console.warn('Failed to load Asia-Pacific Natural Earth data:', error);
-      }
-      
-      // 加载水深数据
-      try {
-        const bathymetryResponse = await fetch(`${BASE_URL}geo/asia-pacific-bathymetry.json`);
-        if (bathymetryResponse.ok) {
-          bathymetryData.current = await bathymetryResponse.json();
-          state.current.needsRedraw = true;
-          requestRedraw();
-        }
-      } catch (error) {
-        console.warn('Failed to load bathymetry data:', error);
-      }
-      
-      // 加载助航标志数据
-      try {
-        const seamarksResponse = await fetch(`${BASE_URL}geo/asia-pacific-seamarks.json`);
-        if (seamarksResponse.ok) {
-          seamarksData.current = await seamarksResponse.json();
-          state.current.needsRedraw = true;
-          requestRedraw();
-        }
-      } catch (error) {
-        console.warn('Failed to load seamarks data:', error);
-      }
-      
-      try {
-        // 备用：加载简化的世界地图数据
-        const worldResponse = await fetch(`${BASE_URL}geo/world-land-simplified.json`);
-        if (worldResponse.ok) {
-          geoData.current = await worldResponse.json();
-          state.current.needsRedraw = true;
-          requestRedraw();
-          return;
-        }
-      } catch (error) {
-        console.warn('Failed to load world geographic data:', error);
-      }
-      
-      // 最后的备用
-      try {
-        const response = await fetch(`${BASE_URL}geo/world-simplified.json`);
-        if (response.ok) {
-          geoData.current = await response.json();
-          state.current.needsRedraw = true;
-          requestRedraw();
-        }
-      } catch (error) {
-        console.warn('Failed to load any geographic data:', error);
-      }
-    };
-    loadGeoData();
-  }, [BASE_URL]);
 
   useEffect(() => {
     const cvs = canvasRef.current!;
@@ -435,217 +294,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     requestRedraw();
   }, [props.enc, props.route]);
 
-  // 绘制水深等深线
-  function drawBathymetry(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    center: LonLat,
-    zoom: number
-  ) {
-    if (!bathymetryData.current || !bathymetryData.current.features) return;
-    
-    const colors = ECDIS_PALETTE[colorScheme];
-    const safetySettings = DEFAULT_SAFETY_SETTINGS;
-    
-    // 定义投影函数
-    const project = (coord: LonLat): [number, number] => {
-      const { x, y } = lonLatToXY(coord[0], coord[1], center[0], center[1], zoom, width, height);
-      return [x, y];
-    };
-    
-    ctx.save();
-    
-    bathymetryData.current.features.forEach((feature: any) => {
-      const depth = feature.properties.depth;
-      const coords = feature.geometry.coordinates;
-      
-      // 根据深度设置颜色
-      if (depth === safetySettings.safetyContour) {
-        // 安全等深线 - 加粗高亮
-        ctx.strokeStyle = colorScheme === 'NIGHT' ? colors.CHRED : colors.CHBLK;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([]);
-      } else if (depth < safetySettings.safetyContour) {
-        // 浅于安全等深线 - 警告色
-        ctx.strokeStyle = colors.DEPSH;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 3]);
-      } else {
-        // 深于安全等深线 - 普通显示
-        ctx.strokeStyle = colors.CHGRD;
-        ctx.lineWidth = 0.5;
-        ctx.setLineDash([2, 4]);
-      }
-      
-      // 绘制等深线
-      if (feature.geometry.type === 'MultiLineString') {
-        coords.forEach((lineString: number[][]) => {
-          ctx.beginPath();
-          lineString.forEach(([lon, lat], index) => {
-            const [x, y] = project([lon, lat]);
-            if (index === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.stroke();
-        });
-      }
-    });
-    
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
-  
-  // 绘制助航标志
-  function drawSeamarks(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    center: LonLat,
-    zoom: number
-  ) {
-    if (!seamarksData.current) return;
-    
-    const colors = ECDIS_PALETTE[colorScheme];
-    
-    // 定义投影函数
-    const project = (coord: LonLat): [number, number] => {
-      const { x, y } = lonLatToXY(coord[0], coord[1], center[0], center[1], zoom, width, height);
-      return [x, y];
-    };
-    
-    ctx.save();
-    
-    // 绘制灯塔
-    if (seamarksData.current.lights) {
-      seamarksData.current.lights.forEach((light: any) => {
-        const [x, y] = project(light.coords);
-        if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
-          // 灯塔符号 - 星形
-          ctx.fillStyle = colors.LIGHTS;
-          ctx.strokeStyle = colors.CHBLK;
-          ctx.lineWidth = 1;
-          drawStar(ctx, x, y, zoom > 10 ? 8 : 6, zoom > 10 ? 4 : 3);
-          
-          // 标注名称（高缩放级别）
-          if (zoom > 12 && light.name) {
-            ctx.fillStyle = colors.CHBLK;
-            ctx.font = '10px monospace';
-            ctx.fillText(light.name, x + 10, y - 5);
-          }
-        }
-      });
-    }
-    
-    // 绘制浮标
-    if (seamarksData.current.buoys) {
-      seamarksData.current.buoys.forEach((buoy: any) => {
-        const [x, y] = project(buoy.coords);
-        if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
-          ctx.strokeStyle = colors.CHBLK;
-          ctx.lineWidth = 1;
-          // 根据类型绘制不同形状
-          if (buoy.category === 'port' || buoy.color === 'red') {
-            ctx.fillStyle = colors.BUOYAR;
-            drawDiamond(ctx, x, y, zoom > 10 ? 6 : 4);
-          } else if (buoy.category === 'starboard' || buoy.color === 'green') {
-            ctx.fillStyle = colors.BUOYAG;
-            drawTriangle(ctx, x, y, zoom > 10 ? 6 : 4);
-          } else {
-            ctx.fillStyle = colors.BUOYAY;
-            drawCircle(ctx, x, y, zoom > 10 ? 5 : 3);
-          }
-        }
-      });
-    }
-    
-    // 绘制危险物
-    if (seamarksData.current.dangers) {
-      seamarksData.current.dangers.forEach((danger: any) => {
-        const [x, y] = project(danger.coords);
-        if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
-          ctx.strokeStyle = danger.dangerous ? colors.CHRED : colors.CHBLK;
-          ctx.lineWidth = 2;
-          
-          if (danger.type === 'wreck') {
-            drawWreckSymbol(ctx, x, y);
-          } else if (danger.type === 'rock') {
-            drawRockSymbol(ctx, x, y);
-          }
-        }
-      });
-    }
-    
-    ctx.restore();
-  }
-  
-  // 符号绘制辅助函数
-  function drawStar(ctx: CanvasRenderingContext2D, x: number, y: number, r1: number, r2: number) {
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const radius = i % 2 === 0 ? r1 : r2;
-      const angle = (Math.PI / 5) * i - Math.PI / 2;
-      const px = x + Math.cos(angle) * radius;
-      const py = y + Math.sin(angle) * radius;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  
-  function drawDiamond(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-    ctx.beginPath();
-    ctx.moveTo(x, y - size);
-    ctx.lineTo(x + size, y);
-    ctx.lineTo(x, y + size);
-    ctx.lineTo(x - size, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  
-  function drawTriangle(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-    ctx.beginPath();
-    ctx.moveTo(x, y - size);
-    ctx.lineTo(x + size, y + size);
-    ctx.lineTo(x - size, y + size);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
-  
-  function drawCircle(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-  
-  function drawWreckSymbol(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    ctx.beginPath();
-    ctx.ellipse(x, y, 8, 5, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x - 6, y - 4);
-    ctx.lineTo(x + 6, y + 4);
-    ctx.moveTo(x - 6, y + 4);
-    ctx.lineTo(x + 6, y - 4);
-    ctx.stroke();
-  }
-  
-  function drawRockSymbol(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    ctx.beginPath();
-    ctx.moveTo(x, y - 5);
-    ctx.lineTo(x + 3, y);
-    ctx.lineTo(x + 2, y + 3);
-    ctx.lineTo(x - 2, y + 3);
-    ctx.lineTo(x - 3, y);
-    ctx.closePath();
-    ctx.stroke();
-  }
-
   const draw = () => {
     const cvs = canvasRef.current!;
     const ctx = cvs.getContext("2d")!;
@@ -659,30 +307,17 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     ctx.fillStyle = "#06141d";
     ctx.fillRect(0, 0, width, height);
 
-    // 真实地理环境图层（优先显示）
-    if (layers.current.geography && geoData.current) {
-      drawGeography(ctx, width, height, center, zoom);
-    }
-    
-    // 水深等深线（ECDIS图层）
-    if (layers.current.bathymetry && bathymetryData.current) {
-      drawBathymetry(ctx, width, height, center, zoom);
-    }
-
     // 本地离线简易海图（网格+纹理）
     if (layers.current.localbase) {
       drawLocalBasemap(ctx, width, height, center, zoom);
     }
 
-    // 绘制海图瓦片（禁用有问题的OSM瓦片，改用增强的本地渲染）
+    // 绘制底图瓦片（OSM + OpenSeaMap）
     if (layers.current.basemap) {
-      // OSM瓦片存在访问问题，改用增强的本地海图渲染
-      drawEnhancedLocalBasemap(ctx, width, height, center, zoom);
+      drawTilesLayer(ctx, width, height, center, zoom, `${TILE_BASE}/osm`);
     }
     if (layers.current.seamarks) {
-      // OpenSeaMap瓦片可能也有同样问题，暂时禁用
-      // drawTilesLayer(ctx, width, height, center, zoom, `${TILE_BASE}/openseamap`);
-      drawLocalSeamarks(ctx, width, height, center, zoom);
+      drawTilesLayer(ctx, width, height, center, zoom, `${TILE_BASE}/openseamap`);
     }
 
     // 视窗裁剪优化：计算当前可见的地理边界
@@ -973,11 +608,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         }
       }
     }
-    
-    // 助航标志（ECDIS风格）
-    if (layers.current.seamark && seamarksData.current) {
-      drawSeamarks(ctx, width, height, center, zoom);
-    }
 
     // 恢复裁剪状态
     ctx.restore();
@@ -1108,382 +738,6 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         const [x2, y2] = project([180, lat]);
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       }
-      ctx.restore();
-    }
-
-    // 绘制真实地理环境（海洋风格）
-    function drawGeography(
-      ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-      center: LonLat,
-      zoom: number
-    ) {
-      if (!geoData.current || !geoData.current.features) return;
-
-      ctx.save();
-      
-      // 获取ECDIS颜色方案
-      const colors = ECDIS_PALETTE[colorScheme];
-
-      // 海洋背景（ECDIS风格）
-      ctx.fillStyle = colors.DEPDW;  // 深水颜色
-      ctx.fillRect(0, 0, width, height);
-
-      // 添加网格线（海图特征）
-      ctx.globalAlpha = 0.05;
-      ctx.strokeStyle = '#b0c4de';
-      ctx.lineWidth = 0.5;
-      
-      // 绘制经纬度网格（每10度）
-      const gridStep = 10;
-      const scale = Math.pow(2, zoom) * 256 / 360;
-      
-      // 经度线
-      for (let lon = -180; lon <= 180; lon += gridStep) {
-        const [x, _] = project([lon, 0]);
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-      
-      // 纬度线
-      for (let lat = -80; lat <= 80; lat += gridStep) {
-        const [_, y] = project([0, lat]);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-      
-      ctx.globalAlpha = 1.0;
-
-      // 绘制陆地（ECDIS样式）
-      geoData.current.features.forEach((feature: any) => {
-        if (!feature.geometry) return;
-
-        const { type, coordinates } = feature.geometry;
-        const properties = feature.properties || {};
-
-        // ECDIS陆地颜色
-        ctx.fillStyle = colors.LANDA;  // ECDIS陆地色
-        ctx.strokeStyle = colors.CSTLN;  // ECDIS海岸线颜色
-        ctx.lineWidth = colorScheme === 'NIGHT' ? 0.5 : 1;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = colorScheme === 'NIGHT' ? 0 : 1;
-        ctx.shadowOffsetX = colorScheme === 'NIGHT' ? 0 : 1;
-        ctx.shadowOffsetY = colorScheme === 'NIGHT' ? 0 : 1;
-
-        // 处理不同的几何类型
-        if (type === 'Polygon') {
-          drawPolygon(coordinates);
-        } else if (type === 'MultiPolygon') {
-          coordinates.forEach((polygon: any) => {
-            drawPolygon(polygon);
-          });
-        }
-      });
-      
-      ctx.shadowBlur = 0;
-
-      // 绘制单个多边形
-      function drawPolygon(rings: number[][] | number[][][]) {
-        // 处理Polygon和MultiPolygon的不同格式
-        const coords = Array.isArray(rings[0]) && Array.isArray(rings[0][0]) ? rings[0] : rings;
-        
-        ctx.beginPath();
-        let firstPoint = true;
-        
-        (coords as number[][]).forEach(([lon, lat]) => {
-          const [x, y] = project([lon, lat]);
-          
-          // 检查点是否在视窗内（扩展边界以确保边缘多边形也能绘制）
-          const margin = 500;
-          if (x < -margin || x > width + margin || y < -margin || y > height + margin) {
-            // 如果点太远，可以跳过但不要断开路径
-          }
-          
-          if (firstPoint) {
-            ctx.moveTo(x, y);
-            firstPoint = false;
-          } else {
-            ctx.lineTo(x, y);
-          }
-        });
-        
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-
-      // 添加地名标注（主要地点）
-      if (zoom >= 6) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 3;
-
-        const labels = [
-          { name: 'Shanghai', lon: 121.5, lat: 31.2 },
-          { name: 'Singapore', lon: 103.85, lat: 1.29 },
-          { name: 'Hong Kong', lon: 114.2, lat: 22.3 },
-          { name: 'Taiwan', lon: 121.0, lat: 23.5 },
-          { name: 'Philippines', lon: 122.0, lat: 12.0 },
-          { name: 'Malaysia', lon: 102.0, lat: 3.0 },
-          { name: 'Indonesia', lon: 120.0, lat: -5.0 },
-          { name: 'Thailand', lon: 100.5, lat: 13.7 },
-          { name: 'Vietnam', lon: 106.7, lat: 10.8 }
-        ];
-
-        labels.forEach(label => {
-          const [x, y] = project([label.lon, label.lat]);
-          if (x > 0 && x < width && y > 0 && y < height) {
-            ctx.fillText(label.name, x + 5, y - 5);
-          }
-        });
-
-        ctx.shadowBlur = 0;
-      }
-
-      ctx.restore();
-    }
-
-    // 增强的本地海图底图（替代有问题的OSM瓦片）
-    function drawEnhancedLocalBasemap(
-      ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-      center: LonLat,
-      zoom: number
-    ) {
-      // 深海蓝渐变背景
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#0a2540');
-      gradient.addColorStop(0.5, '#0d3058');
-      gradient.addColorStop(1, '#0a2540');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      // 添加海洋纹理效果
-      ctx.save();
-      ctx.globalAlpha = 0.1;
-      
-      // 波浪纹理
-      for (let y = 0; y < height; y += 40) {
-        ctx.strokeStyle = 'rgba(100, 150, 200, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let x = 0; x < width; x += 5) {
-          const waveY = y + Math.sin((x + Date.now() * 0.0001) * 0.02) * 10;
-          if (x === 0) ctx.moveTo(x, waveY);
-          else ctx.lineTo(x, waveY);
-        }
-        ctx.stroke();
-      }
-      
-      // 深度等高线效果
-      ctx.strokeStyle = 'rgba(50, 100, 150, 0.2)';
-      ctx.lineWidth = 0.5;
-      const contourStep = zoom >= 10 ? 0.01 : zoom >= 8 ? 0.05 : 0.1;
-      
-      for (let lat = Math.floor(center[1] / contourStep) * contourStep - 2; 
-           lat <= Math.floor(center[1] / contourStep) * contourStep + 2; 
-           lat += contourStep) {
-        for (let lon = Math.floor(center[0] / contourStep) * contourStep - 2;
-             lon <= Math.floor(center[0] / contourStep) * contourStep + 2;
-             lon += contourStep) {
-          const [x, y] = project([lon, lat]);
-          ctx.beginPath();
-          ctx.arc(x, y, 50 + Math.random() * 100, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-      
-      ctx.restore();
-
-      // 增强的经纬网格
-      const gridStep = zoom >= 10 ? 0.01 : zoom >= 8 ? 0.05 : zoom >= 6 ? 0.1 : zoom >= 4 ? 0.5 : 1;
-      
-      ctx.save();
-      ctx.strokeStyle = 'rgba(100, 150, 200, 0.15)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 10]);
-      
-      // 经线
-      for (let lon = Math.floor(center[0] / gridStep) * gridStep - 180; 
-           lon <= Math.floor(center[0] / gridStep) * gridStep + 180; 
-           lon += gridStep) {
-        const [x1, y1] = project([lon, -85]);
-        const [x2, y2] = project([lon, 85]);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      
-      // 纬线
-      for (let lat = Math.floor(center[1] / gridStep) * gridStep - 85; 
-           lat <= Math.floor(center[1] / gridStep) * gridStep + 85; 
-           lat += gridStep) {
-        const [x1, y1] = project([-180, lat]);
-        const [x2, y2] = project([180, lat]);
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      // 坐标标注
-      ctx.save();
-      ctx.fillStyle = 'rgba(200, 220, 240, 0.6)';
-      ctx.font = '10px monospace';
-      
-      // 标注主要经纬线
-      const labelStep = gridStep * 2;
-      for (let lon = Math.floor(center[0] / labelStep) * labelStep; 
-           lon <= Math.floor(center[0] / labelStep) * labelStep + labelStep * 2; 
-           lon += labelStep) {
-        const [x, y] = project([lon, center[1]]);
-        if (x > 0 && x < width) {
-          ctx.fillText(`${lon.toFixed(1)}°`, x + 2, height - 5);
-        }
-      }
-      
-      for (let lat = Math.floor(center[1] / labelStep) * labelStep; 
-           lat <= Math.floor(center[1] / labelStep) * labelStep + labelStep * 2; 
-           lat += labelStep) {
-        const [x, y] = project([center[0], lat]);
-        if (y > 0 && y < height) {
-          ctx.fillText(`${lat.toFixed(1)}°`, 5, y - 2);
-        }
-      }
-      
-      ctx.restore();
-    }
-
-    // 本地渲染的航标和海洋标记
-    function drawLocalSeamarks(
-      ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
-      center: LonLat,
-      zoom: number
-    ) {
-      // 中国东海和南海主要航标位置
-      const seamarks = [
-        // 长江口航标
-        { lon: 121.90, lat: 31.05, type: 'lighthouse', name: 'Changjiang Light' },
-        { lon: 122.10, lat: 30.90, type: 'buoy', color: 'red' },
-        { lon: 122.05, lat: 30.85, type: 'buoy', color: 'green' },
-        
-        // 舟山群岛航标
-        { lon: 122.20, lat: 30.00, type: 'lighthouse', name: 'Zhoushan Light' },
-        { lon: 122.30, lat: 29.90, type: 'beacon' },
-        
-        // 台湾海峡航标
-        { lon: 120.20, lat: 24.50, type: 'lighthouse', name: 'Taiwan Strait Light' },
-        { lon: 119.50, lat: 23.50, type: 'buoy', color: 'red' },
-        
-        // 南海航标
-        { lon: 114.00, lat: 15.00, type: 'lighthouse', name: 'Spratly Light' },
-        { lon: 110.00, lat: 10.00, type: 'beacon' },
-        
-        // 马六甲海峡入口
-        { lon: 104.00, lat: 2.50, type: 'lighthouse', name: 'Malacca Light' },
-        { lon: 103.90, lat: 1.30, type: 'buoy', color: 'green' },
-        
-        // 新加坡港口航标
-        { lon: 103.85, lat: 1.26, type: 'lighthouse', name: 'Singapore Light' },
-        { lon: 103.84, lat: 1.25, type: 'buoy', color: 'red' },
-        { lon: 103.86, lat: 1.27, type: 'buoy', color: 'green' }
-      ];
-
-      ctx.save();
-      
-      seamarks.forEach(mark => {
-        const [x, y] = project([mark.lon, mark.lat]);
-        
-        if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
-        
-        switch(mark.type) {
-          case 'buoy':
-            // 浮标
-            ctx.fillStyle = mark.color === 'red' ? '#ff4444' : '#44ff44';
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            
-            // 浮标顶标
-            ctx.beginPath();
-            if (mark.color === 'red') {
-              // 红色浮标：三角形顶标
-              ctx.moveTo(x, y - 10);
-              ctx.lineTo(x - 5, y - 5);
-              ctx.lineTo(x + 5, y - 5);
-              ctx.closePath();
-            } else {
-              // 绿色浮标：方形顶标
-              ctx.rect(x - 4, y - 10, 8, 5);
-            }
-            ctx.fill();
-            break;
-            
-          case 'lighthouse':
-            // 灯塔
-            ctx.fillStyle = '#ffff88';
-            ctx.strokeStyle = '#ff8800';
-            ctx.lineWidth = 2;
-            
-            // 灯塔主体
-            ctx.beginPath();
-            ctx.moveTo(x, y - 15);
-            ctx.lineTo(x - 5, y);
-            ctx.lineTo(x + 5, y);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            
-            // 光芒效果
-            ctx.strokeStyle = 'rgba(255, 255, 100, 0.5)';
-            ctx.lineWidth = 1;
-            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
-              ctx.beginPath();
-              ctx.moveTo(x, y - 8);
-              ctx.lineTo(
-                x + Math.cos(angle) * 15,
-                y - 8 + Math.sin(angle) * 15
-              );
-              ctx.stroke();
-            }
-            break;
-            
-          case 'beacon':
-            // 信标
-            ctx.fillStyle = '#88ffff';
-            ctx.strokeStyle = '#0088ff';
-            ctx.lineWidth = 2;
-            
-            ctx.beginPath();
-            ctx.rect(x - 5, y - 5, 10, 10);
-            ctx.fill();
-            ctx.stroke();
-            
-            // 中心标记
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(x, y, 2, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-        }
-      });
-      
       ctx.restore();
     }
 

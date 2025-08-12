@@ -1,0 +1,65 @@
+{
+  "name": "Shanghai to Singapore (Corrected)",
+  "description": "Commercial shipping route from Shanghai Port to Singapore Port via East China Sea, Taiwan Strait and South China Sea",
+  "coords": [
+    [121.508, 31.230],
+    [122.000, 31.000],
+    [122.500, 30.500],
+    [123.000, 29.500],
+    [123.500, 28.000],
+    [123.800, 26.500],
+    [123.500, 25.000],
+    [122.800, 23.500],
+    [121.500, 22.000],
+    [120.000, 20.500],
+    [118.500, 18.500],
+    [116.500, 16.000],
+    [114.000, 13.500],
+    [111.500, 11.000],
+    [109.000, 8.500],
+    [106.500, 6.000],
+    [104.500, 3.500],
+    [103.851, 1.265]
+  ],
+  "report": {
+    "clause_refs": [
+      {
+        "standard": "IMO MSC.232(82)",
+        "clause": "4.7.1",
+        "requirement": "Safety depth check",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "IMO MSC.232(82)",
+        "clause": "4.8.3",
+        "requirement": "XTD corridor validation",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "COLREG Rule",
+        "clause": "10",
+        "requirement": "Traffic Separation Scheme",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "IHO S-57",
+        "clause": "SAFETY",
+        "requirement": "Chart data integrity",
+        "status": "COMPLIANT"
+      }
+    ],
+    "min_ukc_m": 15.5,
+    "distance_nm": 1460,
+    "eta_hours": 121.7,
+    "alerts": [
+      {
+        "level": "C",
+        "msg": "Route passes through Taiwan Strait"
+      },
+      {
+        "level": "C",
+        "msg": "Route passes through South China Sea shipping lanes"
+      }
+    ]
+  }
+}

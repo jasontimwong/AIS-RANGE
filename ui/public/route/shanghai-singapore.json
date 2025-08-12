@@ -1,0 +1,63 @@
+{
+  "name": "Shanghai to Singapore",
+  "description": "Commercial shipping route from Shanghai Port to Singapore Port via East China Sea and South China Sea",
+  "coords": [
+    [121.508, 31.230],
+    [121.650, 31.100],
+    [121.800, 30.850],
+    [122.100, 30.200],
+    [122.500, 28.500],
+    [121.900, 26.800],
+    [120.800, 24.500],
+    [119.500, 22.300],
+    [117.200, 20.100],
+    [115.000, 17.500],
+    [112.500, 14.800],
+    [110.200, 11.500],
+    [107.800, 8.200],
+    [105.500, 5.000],
+    [104.000, 2.500],
+    [103.851, 1.265]
+  ],
+  "report": {
+    "clause_refs": [
+      {
+        "standard": "IMO MSC.232(82)",
+        "clause": "4.7.1",
+        "requirement": "Safety depth check",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "IMO MSC.232(82)",
+        "clause": "4.8.3",
+        "requirement": "XTD corridor validation",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "COLREG Rule",
+        "clause": "10",
+        "requirement": "Traffic Separation Scheme",
+        "status": "COMPLIANT"
+      },
+      {
+        "standard": "IHO S-57",
+        "clause": "SAFETY",
+        "requirement": "Chart data integrity",
+        "status": "COMPLIANT"
+      }
+    ],
+    "min_ukc_m": 15.5,
+    "distance_nm": 1460,
+    "eta_hours": 121.7,
+    "alerts": [
+      {
+        "level": "C",
+        "msg": "Route passes through multiple TSS zones"
+      },
+      {
+        "level": "C",
+        "msg": "Seasonal monsoon considerations apply"
+      }
+    ]
+  }
+}

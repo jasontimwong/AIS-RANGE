@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { CanvasMap, MapRef, LonLat } from "./components/CanvasMap";
 import { getRoute, getEncLite, ValidationReportV1, exportRTZ, importRTZ } from "./api/client";
+import { ColorScheme } from "./utils/ecdisColors";
 
 export function App() {
   const mapRef = useRef<MapRef>(null);
@@ -9,6 +10,7 @@ export function App() {
   const [report, setReport] = useState<ValidationReportV1 | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [colorScheme, setColorScheme] = useState<ColorScheme>('DAY');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,16 +28,35 @@ export function App() {
         setRoute(planData.coords);
         setReport(planData.report);
         setError(null);
+        
+        // 自动定位到航迹
+        setTimeout(() => {
+          mapRef.current?.zoomToFit();
+        }, 100);
       } catch (err) {
         console.error('Failed to load data:', err);
         setError(`加载失败: ${err instanceof Error ? err.message : 'Unknown error'}`);
         
-        // 设置默认示例数据
+        // 设置默认上海-新加坡航线
         setRoute([
-          [0.0, 0.0],
-          [0.01, 0.005], 
-          [0.02, 0.01],
-          [0.03, 0.015]
+          [121.508, 31.23],   // 上海港
+          [122.0, 31.0],      // 出长江口
+          [122.5, 30.5],      // 东海
+          [123.0, 29.5],      // 继续南下
+          [122.8, 28.0],      // 浙江东部海域
+          [122.0, 26.5],      // 福建东部海域
+          [121.0, 25.0],      // 台湾海峡北部
+          [119.5, 23.5],      // 台湾海峡中部
+          [118.0, 22.0],      // 台湾海峡南部
+          [116.5, 20.5],      // 南海北部
+          [114.5, 18.0],      // 南海中部
+          [112.0, 15.0],      // 南海中南部
+          [110.0, 12.0],      // 继续向南
+          [108.0, 9.0],       // 接近马来半岛
+          [106.0, 6.0],       // 马来半岛东岸
+          [104.5, 3.5],       // 马六甲海峡北口
+          [103.9, 2.0],       // 马六甲海峡
+          [103.85, 1.27]      // 新加坡港
         ]);
         setEnc({
           coast: [
@@ -62,6 +83,29 @@ export function App() {
         setLoading(false);
       }
     })();
+  }, []);
+
+  // 添加键盘快捷键支持
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return; // 忽略输入框中的按键
+      }
+      
+      switch(e.key.toLowerCase()) {
+        case ' ':
+          e.preventDefault();
+          mapRef.current?.centerOnRoute();
+          break;
+        case 'f':
+          e.preventDefault();
+          mapRef.current?.zoomToFit();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
   // RTZ导出处理
@@ -146,10 +190,108 @@ export function App() {
           🗺️ ECDIS 图层
         </h2>
         
+        {/* ECDIS颜色方案 */}
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>ECDIS显示模式</h3>
+          <select
+            value={colorScheme}
+            onChange={(e) => {
+              const scheme = e.target.value as ColorScheme;
+              setColorScheme(scheme);
+              mapRef.current?.setColorScheme(scheme);
+            }}
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "4px",
+              background: "#2e3440",
+              color: "#d8dee9",
+              border: "1px solid #4c566a",
+              fontSize: "14px"
+            }}
+          >
+            <option value="DAY">☀️ 日间模式</option>
+            <option value="DUSK">🌅 黄昏模式</option>
+            <option value="NIGHT">🌙 夜间模式</option>
+          </select>
+          <div style={{ 
+            marginTop: "8px", 
+            fontSize: "12px", 
+            color: "#5e81ac" 
+          }}>
+            {colorScheme === 'NIGHT' && "红色系保护夜视能力"}
+            {colorScheme === 'DUSK' && "低对比度减少眩光"}
+            {colorScheme === 'DAY' && "高对比度日光可读"}
+          </div>
+        </div>
+        
         {/* 图层控制 */}
         <div style={{ marginBottom: "24px" }}>
           <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>基础图层</h3>
           <ul style={{ listStyle: "none" }}>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  defaultChecked
+                  onChange={e => mapRef.current?.toggle("geography", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                🌍 真实地理环境（亚太地区海岸线）
+              </label>
+            </li>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  defaultChecked
+                  onChange={e => mapRef.current?.toggle("bathymetry", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                📊 水深等深线（5m-200m）
+              </label>
+            </li>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  defaultChecked
+                  onChange={e => mapRef.current?.toggle("seamark", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                🔦 助航标志（灯塔、浮标、危险物）
+              </label>
+            </li>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  onChange={e => mapRef.current?.toggle("localbase", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                本地离线底图（程序纹理+经纬网）
+              </label>
+            </li>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  onChange={e => mapRef.current?.toggle("basemap", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                增强海图底图（深海渲染+等深线）
+              </label>
+            </li>
+            <li style={{ margin: "4px 0" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+                <input 
+                  type="checkbox" 
+                  onChange={e => mapRef.current?.toggle("seamarks", e.target.checked)}
+                  style={{ marginRight: "8px" }}
+                /> 
+                航标系统（浮标+灯塔+信标）
+              </label>
+            </li>
             <li style={{ margin: "4px 0" }}>
               <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
                 <input 
@@ -327,13 +469,68 @@ export function App() {
           position: "absolute",
           top: "16px",
           right: "16px",
-          background: "rgba(46, 52, 64, 0.9)",
-          padding: "8px",
-          borderRadius: "4px",
-          border: "1px solid #3b4252"
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px"
         }}>
-          <div style={{ fontSize: "12px", color: "#81a1c1" }}>
-            📍 鼠标拖拽平移 | 滚轮缩放
+          {/* 航迹定位控制 */}
+          <div style={{
+            background: "rgba(46, 52, 64, 0.95)",
+            padding: "8px",
+            borderRadius: "4px",
+            border: "1px solid #3b4252",
+            display: "flex",
+            gap: "8px"
+          }}>
+            <button
+              onClick={() => mapRef.current?.centerOnRoute()}
+              style={{
+                padding: "4px 8px",
+                background: "#5e81ac",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+              title="定位到航迹中心"
+            >
+              🎯 航迹中心
+            </button>
+            <button
+              onClick={() => mapRef.current?.zoomToFit()}
+              style={{
+                padding: "4px 8px",
+                background: "#81a1c1",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                cursor: "pointer",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+              title="自动缩放以显示完整航迹"
+            >
+              🔍 适应视图
+            </button>
+          </div>
+          
+          {/* 操作提示 */}
+          <div style={{
+            background: "rgba(46, 52, 64, 0.9)",
+            padding: "8px",
+            borderRadius: "4px",
+            border: "1px solid #3b4252"
+          }}>
+            <div style={{ fontSize: "11px", color: "#81a1c1", lineHeight: "1.4" }}>
+              📍 鼠标拖拽平移 | 滚轮缩放<br/>
+              ⌨️ 空格键：航迹中心 | F键：适应视图
+            </div>
           </div>
         </div>
       </main>

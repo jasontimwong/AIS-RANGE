@@ -1,0 +1,296 @@
+{
+  "lights": [
+    {
+      "type": "light_major",
+      "coords": [121.8675, 31.0456],
+      "name": "Yangshan Deep Water Port Light",
+      "color": "white",
+      "character": "Fl",
+      "range": "15",
+      "properties": {
+        "seamark:type": "light_major",
+        "seamark:light:colour": "white",
+        "seamark:light:character": "Fl",
+        "seamark:light:period": "10",
+        "seamark:light:height": "35"
+      }
+    },
+    {
+      "type": "light_major",
+      "coords": [121.5445, 31.3896],
+      "name": "Wusongkou Light",
+      "color": "red",
+      "character": "Fl",
+      "range": "12",
+      "properties": {
+        "seamark:type": "light_major",
+        "seamark:light:colour": "red"
+      }
+    },
+    {
+      "type": "light_major",
+      "coords": [118.0632, 24.4474],
+      "name": "Xiamen Harbor Light",
+      "color": "white",
+      "character": "Fl",
+      "range": "18",
+      "properties": {
+        "seamark:type": "light_major"
+      }
+    },
+    {
+      "type": "light_major",
+      "coords": [114.2619, 22.2793],
+      "name": "Victoria Harbor Light",
+      "color": "green",
+      "character": "Oc",
+      "range": "10",
+      "properties": {
+        "seamark:type": "light_major"
+      }
+    },
+    {
+      "type": "light_major",
+      "coords": [103.8541, 1.2680],
+      "name": "Singapore Strait Light",
+      "color": "white",
+      "character": "Fl",
+      "range": "20",
+      "properties": {
+        "seamark:type": "light_major",
+        "seamark:light:colour": "white",
+        "seamark:light:character": "Fl",
+        "seamark:light:period": "5"
+      }
+    },
+    {
+      "type": "light_minor",
+      "coords": [103.9528, 1.2358],
+      "name": "Sentosa Light",
+      "color": "red",
+      "character": "Q",
+      "range": "8",
+      "properties": {
+        "seamark:type": "light_minor"
+      }
+    }
+  ],
+  "buoys": [
+    {
+      "type": "buoy_lateral",
+      "coords": [121.7856, 31.0234],
+      "name": "Shanghai Approach Buoy #1",
+      "category": "port",
+      "color": "red",
+      "properties": {
+        "seamark:type": "buoy_lateral",
+        "seamark:buoy_lateral:category": "port",
+        "seamark:buoy_lateral:colour": "red",
+        "seamark:buoy_lateral:shape": "can"
+      }
+    },
+    {
+      "type": "buoy_lateral",
+      "coords": [121.7956, 31.0334],
+      "name": "Shanghai Approach Buoy #2",
+      "category": "starboard",
+      "color": "green",
+      "properties": {
+        "seamark:type": "buoy_lateral",
+        "seamark:buoy_lateral:category": "starboard",
+        "seamark:buoy_lateral:colour": "green",
+        "seamark:buoy_lateral:shape": "conical"
+      }
+    },
+    {
+      "type": "buoy_safe_water",
+      "coords": [119.5234, 25.1567],
+      "name": "Taiwan Strait Safe Water",
+      "category": "safe_water",
+      "color": "red;white;red",
+      "properties": {
+        "seamark:type": "buoy_safe_water",
+        "seamark:buoy_safe_water:colour": "red;white;red",
+        "seamark:buoy_safe_water:colour_pattern": "vertical"
+      }
+    },
+    {
+      "type": "buoy_cardinal",
+      "coords": [109.8765, 6.4321],
+      "name": "South China Sea Cardinal N",
+      "category": "north",
+      "color": "black;yellow",
+      "properties": {
+        "seamark:type": "buoy_cardinal",
+        "seamark:buoy_cardinal:category": "north",
+        "seamark:buoy_cardinal:colour": "black;yellow"
+      }
+    },
+    {
+      "type": "buoy_special_purpose",
+      "coords": [103.8123, 1.2456],
+      "name": "Singapore Port Limit",
+      "category": "warning",
+      "color": "yellow",
+      "properties": {
+        "seamark:type": "buoy_special_purpose",
+        "seamark:buoy_special_purpose:category": "warning",
+        "seamark:buoy_special_purpose:colour": "yellow"
+      }
+    }
+  ],
+  "beacons": [
+    {
+      "type": "beacon_lateral",
+      "coords": [121.5123, 31.2345],
+      "name": "Huangpu River Beacon",
+      "category": "port",
+      "color": "red",
+      "properties": {
+        "seamark:type": "beacon_lateral",
+        "seamark:beacon_lateral:category": "port",
+        "seamark:beacon_lateral:colour": "red"
+      }
+    },
+    {
+      "type": "beacon_cardinal",
+      "coords": [114.1234, 22.3456],
+      "name": "Hong Kong East Cardinal",
+      "category": "east",
+      "color": "black;yellow;black",
+      "properties": {
+        "seamark:type": "beacon_cardinal",
+        "seamark:beacon_cardinal:category": "east"
+      }
+    }
+  ],
+  "dangers": [
+    {
+      "type": "wreck",
+      "coords": [115.4567, 20.1234],
+      "name": "Unknown Wreck",
+      "category": "dangerous",
+      "dangerous": true,
+      "properties": {
+        "seamark:type": "wreck",
+        "seamark:wreck:category": "dangerous",
+        "seamark:danger": "yes"
+      }
+    },
+    {
+      "type": "rock",
+      "coords": [111.2345, 12.3456],
+      "name": "Submerged Rock",
+      "category": "awash",
+      "dangerous": true,
+      "properties": {
+        "seamark:type": "rock",
+        "seamark:rock:water_level": "awash",
+        "seamark:danger": "yes"
+      }
+    },
+    {
+      "type": "obstruction",
+      "coords": [108.7654, 10.9876],
+      "name": "Fishing Stakes",
+      "category": "foul",
+      "dangerous": false,
+      "properties": {
+        "seamark:type": "obstruction",
+        "seamark:obstruction:category": "foul"
+      }
+    }
+  ],
+  "areas": [
+    {
+      "type": "restricted_area",
+      "coords": [
+        [[121.7, 31.0], [121.8, 31.0], [121.8, 31.1], [121.7, 31.1], [121.7, 31.0]]
+      ],
+      "name": "Shanghai Port Security Zone",
+      "properties": {
+        "seamark:type": "restricted_area",
+        "seamark:restricted_area:restriction": "no_entry"
+      }
+    },
+    {
+      "type": "fairway",
+      "coords": [
+        [[103.7, 1.2], [103.8, 1.25], [103.9, 1.25], [104.0, 1.2]]
+      ],
+      "name": "Singapore Strait Fairway",
+      "properties": {
+        "seamark:type": "fairway",
+        "seamark:fairway:orientation": "090"
+      }
+    },
+    {
+      "type": "separation_zone",
+      "coords": [
+        [[119.4, 25.0], [119.5, 25.1], [119.6, 25.1], [119.5, 25.0]]
+      ],
+      "name": "Taiwan Strait TSS Separation",
+      "properties": {
+        "seamark:type": "separation_zone"
+      }
+    }
+  ],
+  "anchorages": [
+    {
+      "type": "anchorage",
+      "coords": [121.6543, 31.1234],
+      "name": "Shanghai Outer Anchorage",
+      "category": "general",
+      "properties": {
+        "seamark:type": "anchorage",
+        "seamark:anchorage:category": "general"
+      }
+    },
+    {
+      "type": "anchorage",
+      "coords": [103.9876, 1.2345],
+      "name": "Singapore Eastern Anchorage",
+      "category": "tanker",
+      "properties": {
+        "seamark:type": "anchorage",
+        "seamark:anchorage:category": "tanker"
+      }
+    }
+  ],
+  "harbours": [
+    {
+      "type": "harbour",
+      "coords": [121.5056, 31.2408],
+      "name": "Shanghai Port",
+      "category": "commercial",
+      "properties": {
+        "seamark:type": "harbour",
+        "seamark:harbour:category": "commercial"
+      }
+    },
+    {
+      "type": "harbour",
+      "coords": [103.8520, 1.2690],
+      "name": "Singapore Port",
+      "category": "commercial",
+      "properties": {
+        "seamark:type": "harbour",
+        "seamark:harbour:category": "commercial"
+      }
+    }
+  ],
+  "metadata": {
+    "source": "OpenSeaMap/OpenStreetMap simulation",
+    "date": "2024-01-01T00:00:00.000Z",
+    "bbox": [100, -2, 125, 35],
+    "count": {
+      "lights": 6,
+      "buoys": 5,
+      "beacons": 2,
+      "dangers": 3,
+      "areas": 3,
+      "anchorages": 2,
+      "harbours": 2
+    }
+  }
+}

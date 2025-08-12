@@ -2,7 +2,7 @@ import type { PlanRequestV1, ValidationReportV1, ServiceStatus } from "../types/
 
 export type { ValidationReportV1 };
 
-const API_BASE = 'http://localhost:8000';  // 直接指向后端API
+const API_BASE = 'http://localhost:8000';  // 后端API（本地优先方案下不会调用）
 
 // WebSocket connection for real-time updates
 let wsConnection: WebSocket | null = null;
@@ -16,69 +16,61 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes default TTL
  * 获取示例路线数据
  * 先尝试调用后端API，失败则返回示例数据
  */
-export async function getRoute(): Promise<{
-  coords: [number, number][];
-  report: ValidationReportV1;
-}> {
+export async function getRoute(): Promise<{ coords: [number, number][]; report: ValidationReportV1; }> {
+  // 本地优先方案：先尝试加载真实航线，失败则使用示例
   try {
-    // 构造规划请求
-    const planRequest: PlanRequestV1 = {
-      projection: "EPSG:3395",
-      start: { lon: 0.005, lat: 0.005, cog: 45 },
-      goal: { lon: 0.025, lat: 0.015 },
-      safety_depth_m: 10,
-      min_turn_radius_nm: 0.5,
-      xtd_nm: 0.2
-    };
-
-    const response = await fetch(`${API_BASE}/plan`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(planRequest)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend /plan failed: ${response.status}`);
+    const base = (import.meta as any)?.env?.BASE_URL || '/';
+    const prefix = base.endsWith('/') ? base.slice(0, -1) : base;
+    
+    // 首先尝试加载修正后的真实航线（上海-新加坡）
+    try {
+      const correctedRouteUrl = `${prefix}/route/shanghai-singapore-corrected.json`;
+      const correctedRes = await fetch(correctedRouteUrl);
+      if (correctedRes.ok) {
+        const data = await correctedRes.json();
+        const coords = (data.coords || data.waypoints) as [number, number][];
+        return { coords, report: data.report || getExampleReport() };
+      }
+    } catch {}
+    
+    // 尝试原始航线
+    try {
+      const realRouteUrl = `${prefix}/route/shanghai-singapore.json`;
+      const realRes = await fetch(realRouteUrl);
+      if (realRes.ok) {
+        const data = await realRes.json();
+        const coords = (data.coords || data.waypoints) as [number, number][];
+        return { coords, report: data.report || getExampleReport() };
+      }
+    } catch {}
+    
+    // 退回到示例航线
+    const localUrl = `${prefix}/route/example.json`;
+    const res = await fetch(localUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const coords = (data.coords || data.waypoints || getExampleRoute()) as [number, number][];
+      return { coords, report: data.report || getExampleReport() };
     }
-
-    const data = await response.json();
-    
-    // Convert waypoints to coords format
-    const coords = data.waypoints ? 
-      data.waypoints.map((wp: any) => [wp.lon, wp.lat] as [number, number]) :
-      getExampleRoute();
-    
-    return {
-      coords,
-      report: data.validation_report || getExampleReport()
-    };
-
-  } catch (error) {
-    console.warn('Failed to fetch route from backend, using example data:', error);
-    return {
-      coords: getExampleRoute(),
-      report: getExampleReport()
-    };
-  }
+  } catch {}
+  return { coords: getExampleRoute(), report: getExampleReport() };
 }
 
 /**
  * 获取ENC-lite数据（简化的海图数据）
  */
 export async function getEncLite(): Promise<any> {
+  // 本地优先：先尝试静态文件，然后示例数据；不访问后端
   try {
-    const response = await fetch(`${API_BASE}/enc/lite`);
-    
-    if (!response.ok) {
-      throw new Error(`Backend /enc/lite failed: ${response.status}`);
+    const base = (import.meta as any)?.env?.BASE_URL || '/';
+    const prefix = base.endsWith('/') ? base.slice(0, -1) : base;
+    const localUrl = `${prefix}/enc/enc_lite.json`;
+    const res = await fetch(localUrl);
+    if (res.ok) {
+      return await res.json();
     }
-
-    return await response.json();
-
-  } catch (error) {
-    console.warn('Failed to fetch ENC data from backend, using example data:', error);
-    return getExampleEncData();
-  }
+  } catch {}
+  return getExampleEncData();
 }
 
 /**
@@ -360,7 +352,7 @@ function getExampleEncData(): any {
     coast: [
       [
         [
-          [0.0, -0.005],   // 海岸线围成一个"海湾"形状
+          [0.0, -0.005],
           [0.035, -0.005],
           [0.035, 0.025],
           [0.030, 0.025],
@@ -395,16 +387,64 @@ function getExampleEncData(): any {
       ]
     ],
     
-    // TSS分道通航制（目前为空，可根据需要添加）
+    // TSS分道通航制（包含示例车道与分隔带）
     tss: {
-      lanes: [],
-      sep_zones: []
+      lanes: [
+        [
+          [
+            [0.010, 0.005],
+            [0.025, 0.005],
+            [0.025, 0.008],
+            [0.010, 0.008],
+            [0.010, 0.005]
+          ]
+        ]
+      ],
+      sep_zones: [
+        [
+          [
+            [0.012, 0.008],
+            [0.023, 0.008],
+            [0.023, 0.009],
+            [0.012, 0.009],
+            [0.012, 0.008]
+          ]
+        ]
+      ]
     },
     
-    // S-124警告（目前为空，可根据需要添加）
+    // S-124警告（限速区与禁航区示例）
     s124: {
-      speed_limits: [],
-      prohibited: []
+      speed_limits: [
+        {
+          geometry: [
+            [
+              [0.016, 0.010],
+              [0.020, 0.010],
+              [0.020, 0.014],
+              [0.016, 0.014],
+              [0.016, 0.010]
+            ]
+          ],
+          max_speed_kn: 8.0,
+          time_window: { "start": "2025-01-01T00:00:00Z", "end": "2025-12-31T23:59:59Z" }
+        }
+      ],
+      prohibited: [
+        {
+          geometry: [
+            [
+              [0.006, 0.012],
+              [0.009, 0.012],
+              [0.009, 0.016],
+              [0.006, 0.016],
+              [0.006, 0.012]
+            ]
+          ],
+          reason: "Marine Protected Area",
+          time_window: { "start": "2025-01-01T00:00:00Z", "end": "2025-12-31T23:59:59Z" }
+        }
+      ]
     }
   };
 }

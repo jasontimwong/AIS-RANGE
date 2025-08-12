@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Console Check</title>
+</head>
+<body>
+    <h1>Checking for Console Errors</h1>
+    <iframe id="app" src="http://localhost:3003/ui/" width="100%" height="600"></iframe>
+    <div id="errors"></div>
+    
+    <script>
+        // 捕获iframe中的错误
+        window.addEventListener('message', function(e) {
+            if (e.data.type === 'error') {
+                document.getElementById('errors').innerHTML += '<div style="color:red;">' + e.data.message + '</div>';
+            }
+        });
+        
+        // 检查主窗口错误
+        window.onerror = function(msg, url, line, col, error) {
+            document.getElementById('errors').innerHTML += '<div style="color:red;">Error: ' + msg + ' at line ' + line + '</div>';
+            return false;
+        };
+        
+        // 尝试直接访问API检查错误
+        fetch('http://localhost:3003/ui/')
+            .then(response => response.text())
+            .then(html => {
+                console.log('Page loaded successfully');
+                // 查找可能的错误信息
+                if (html.includes('ReferenceError') || html.includes('TypeError') || html.includes('Error')) {
+                    console.error('Found error indicators in HTML');
+                }
+            })
+            .catch(err => {
+                document.getElementById('errors').innerHTML += '<div style="color:red;">Fetch error: ' + err + '</div>';
+            });
+    </script>
+</body>
+</html>
