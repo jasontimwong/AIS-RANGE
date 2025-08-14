@@ -1,0 +1,158 @@
+{
+  "scenario_id": "collision_avoidance_50m_001",
+  "timestamp": "2025-08-14T15:30:00Z",
+  "description": "碰撞风险场景 - 3个高风险目标需要避让",
+  "own_vessel": {
+    "position": [31.23, 121.508],
+    "speed_kn": 15,
+    "course": 135,
+    "destination": [31.00, 122.00]
+  },
+  "ais_targets": [
+    {
+      "mmsi": "THREAT001",
+      "name": "Cargo Ship Alpha",
+      "position": [31.18, 121.65],
+      "sog": 18.0,
+      "cog": 270.0,
+      "heading": 270.0,
+      "ship_type": 70,
+      "length": 200,
+      "width": 30,
+      "risk_assessment": {
+        "risk_level": "HIGH",
+        "cpa_nm": 0.8,
+        "tcpa_min": 12.5,
+        "colreg_situation": "crossing_give_way"
+      }
+    },
+    {
+      "mmsi": "THREAT002",
+      "name": "Tanker Bravo",
+      "position": [31.15, 121.75],
+      "sog": 12.0,
+      "cog": 180.0,
+      "heading": 180.0,
+      "ship_type": 80,
+      "length": 250,
+      "width": 40,
+      "risk_assessment": {
+        "risk_level": "HIGH",
+        "cpa_nm": 0.65,
+        "tcpa_min": 18.2,
+        "colreg_situation": "crossing_give_way"
+      }
+    },
+    {
+      "mmsi": "THREAT003",
+      "name": "Container Charlie",
+      "position": [31.12, 121.85],
+      "sog": 20.0,
+      "cog": 315.0,
+      "heading": 315.0,
+      "ship_type": 79,
+      "length": 300,
+      "width": 45,
+      "risk_assessment": {
+        "risk_level": "MEDIUM",
+        "cpa_nm": 0.97,
+        "tcpa_min": 22.8,
+        "colreg_situation": "head_on"
+      }
+    },
+    {
+      "mmsi": "SAFE001",
+      "name": "Fishing Vessel Delta",
+      "position": [31.20, 121.55],
+      "sog": 8.0,
+      "cog": 90.0,
+      "heading": 90.0,
+      "ship_type": 30,
+      "length": 30,
+      "width": 8,
+      "risk_assessment": {
+        "risk_level": "LOW",
+        "cpa_nm": 2.5,
+        "tcpa_min": 35.0,
+        "colreg_situation": "safe_passing"
+      }
+    },
+    {
+      "mmsi": "SAFE002",
+      "name": "Yacht Echo",
+      "position": [31.10, 121.95],
+      "sog": 10.0,
+      "cog": 45.0,
+      "heading": 45.0,
+      "ship_type": 36,
+      "length": 20,
+      "width": 5,
+      "risk_assessment": {
+        "risk_level": "LOW",
+        "cpa_nm": 3.2,
+        "tcpa_min": 40.0,
+        "colreg_situation": "safe_passing"
+      }
+    }
+  ],
+  "expected_avoidance": {
+    "action_required": true,
+    "avoidance_type": "course_change",
+    "recommended_actions": [
+      {
+        "target_mmsi": "THREAT001",
+        "action": "alter_course_starboard",
+        "new_course": 150,
+        "distance_to_action_nm": 3.5
+      },
+      {
+        "target_mmsi": "THREAT002",
+        "action": "alter_course_port",
+        "new_course": 120,
+        "distance_to_action_nm": 4.2
+      },
+      {
+        "target_mmsi": "THREAT003",
+        "action": "alter_course_starboard",
+        "new_course": 155,
+        "distance_to_action_nm": 5.0
+      }
+    ]
+  },
+  "visualization": {
+    "threat_zones": [
+      {
+        "center": [31.18, 121.65],
+        "radius_m": 1500,
+        "color": "red",
+        "opacity": 0.3
+      },
+      {
+        "center": [31.15, 121.75],
+        "radius_m": 1200,
+        "color": "red",
+        "opacity": 0.3
+      },
+      {
+        "center": [31.12, 121.85],
+        "radius_m": 1800,
+        "color": "orange",
+        "opacity": 0.2
+      }
+    ],
+    "safe_zones": [
+      {
+        "center": [31.20, 121.55],
+        "radius_m": 500,
+        "color": "green",
+        "opacity": 0.1
+      },
+      {
+        "center": [31.10, 121.95],
+        "radius_m": 500,
+        "color": "green",
+        "opacity": 0.1
+      }
+    ]
+  }
+}
