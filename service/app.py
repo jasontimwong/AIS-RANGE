@@ -72,9 +72,10 @@ if tiles_seamark_path.exists():
     app.mount("/static/openseamap", StaticFiles(directory=str(tiles_seamark_path)), name="openseamap_tiles")
 
 # Add CORS middleware to allow frontend access
+# Updated to port 3001 for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
