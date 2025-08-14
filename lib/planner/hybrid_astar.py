@@ -50,17 +50,19 @@ class Node:
 @dataclass
 class PlannerConfig:
     """Configuration for Hybrid A* planner."""
-    grid_resolution: float = 10.0  # Spatial discretization (meters)
+    grid_resolution: float = 50.0  # Spatial discretization (meters) - unified granularity
     angle_resolution: float = np.pi / 8  # Angular discretization (radians)
     min_turn_radius: float = 100.0  # Minimum turning radius (meters)
     max_steer_angle: float = np.pi / 4  # Maximum steering angle (radians)
     num_steer_angles: int = 5  # Number of steering angles to try
-    motion_step: float = 20.0  # Motion primitive step size (meters)
+    motion_step: float = 50.0  # Motion primitive step size (meters) - unified granularity for better resolution
     max_iterations: int = 10000  # Maximum search iterations
-    goal_tolerance_xy: float = 20.0  # Goal position tolerance (meters)
+    goal_tolerance_xy: float = 50.0  # Goal position tolerance (meters) - adjusted to match motion_step
     goal_tolerance_theta: float = np.pi / 8  # Goal heading tolerance (radians)
     vessel_length: float = 50.0  # Vessel length for collision checking (meters)
     vessel_width: float = 10.0  # Vessel width for collision checking (meters)
+    # Dynamic configuration support for runtime adjustment
+    dynamic_motion_step: Optional[float] = None  # Override motion_step at runtime if needed
 
 
 @dataclass
@@ -114,7 +116,8 @@ class HybridAStar:
     def plan(self, 
              start: Tuple[float, float, float],
              goal: Tuple[float, float, float],
-             initial_velocity: float = 10.0) -> Optional[Route]:
+             initial_velocity: float = 10.0,
+             motion_step_override: Optional[float] = None) -> Optional[Route]:
         """
         Plan a route from start to goal.
         
@@ -122,12 +125,21 @@ class HybridAStar:
             start: Start pose (x, y, theta) in meters and radians
             goal: Goal pose (x, y, theta) in meters and radians
             initial_velocity: Initial velocity in m/s
+            motion_step_override: Optional override for motion_step (meters)
             
         Returns:
             Route object if successful, None if no path found
         """
         start_time = time.time()
-        logger.info(f"Planning from {start} to {goal}")
+        
+        # Apply dynamic motion_step if provided
+        original_motion_step = None
+        if motion_step_override is not None:
+            original_motion_step = self.config.motion_step
+            self.config.motion_step = motion_step_override
+            logger.info(f"Using dynamic motion_step: {motion_step_override}m")
+        
+        logger.info(f"Planning from {start} to {goal} with motion_step={self.config.motion_step}m")
         
         # Reset visited set
         self.visited.clear()
@@ -161,6 +173,9 @@ class HybridAStar:
                 logger.info(f"Goal reached after {iterations} iterations")
                 route = self._reconstruct_path(current)
                 route.planning_time = time.time() - start_time
+                # Restore original motion_step if it was overridden
+                if original_motion_step is not None:
+                    self.config.motion_step = original_motion_step
                 return route
             
             # Track best node (closest to goal)
@@ -197,7 +212,14 @@ class HybridAStar:
         if best_node != start_node:
             route = self._reconstruct_path(best_node)
             route.planning_time = time.time() - start_time
+            # Restore original motion_step if it was overridden
+            if original_motion_step is not None:
+                self.config.motion_step = original_motion_step
             return route
+        
+        # Restore original motion_step if it was overridden
+        if original_motion_step is not None:
+            self.config.motion_step = original_motion_step
         
         return None
     
