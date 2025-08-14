@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-11T08:41:06.480436Z",
+  "generated_at": "2025-08-14T03:25:06.456991Z",
   "osm_tiles": {
     "root": "/Users/jasonwong/planner/data/osm_tiles/standard",
     "total_tiles": 21,
@@ -72,9 +72,62 @@
       "note": null
     }
   },
+  "natural_earth_like": {
+    "asia_pacific_land": {
+      "path": "/Users/jasonwong/planner/ui/public/geo/asia-pacific-land.json",
+      "exists": true,
+      "size_bytes": 426122,
+      "feature_count": 500,
+      "sample_properties": {
+        "scalerank": 0,
+        "featurecla": "Land",
+        "min_zoom": 1.5
+      }
+    },
+    "asia_pacific_bathymetry": {
+      "path": "/Users/jasonwong/planner/ui/public/geo/asia-pacific-bathymetry.json",
+      "exists": true,
+      "size_bytes": 4583,
+      "feature_count": 6,
+      "sample_properties": {
+        "depth": 5,
+        "type": "contour",
+        "description": "5m contour - Very shallow water"
+      }
+    },
+    "asia_pacific_seamarks": {
+      "path": "/Users/jasonwong/planner/ui/public/geo/asia-pacific-seamarks.json",
+      "exists": true,
+      "size_bytes": 7601,
+      "feature_count": null,
+      "sample_properties": null
+    },
+    "world_land_simplified": {
+      "path": "/Users/jasonwong/planner/ui/public/geo/world-land-simplified.json",
+      "exists": true,
+      "size_bytes": 1167511,
+      "feature_count": 1420,
+      "sample_properties": {
+        "scalerank": 0,
+        "featurecla": "Land",
+        "min_zoom": 1.5
+      }
+    },
+    "world_simplified": {
+      "path": "/Users/jasonwong/planner/ui/public/geo/world-simplified.json",
+      "exists": true,
+      "size_bytes": 12213,
+      "feature_count": 12,
+      "sample_properties": {
+        "name": "Asia",
+        "type": "continent"
+      }
+    }
+  },
   "notes": [
     "Low-zoom raster tiles (z=0..2) cached for global baseline.",
     "OpenSeaMap seamark overlay cached for the same zooms.",
-    "OSM simplified water polygons zip appears invalid/tiny on this mirror; full split archive present."
+    "OSM simplified water polygons zip appears invalid/tiny on this mirror; full split archive present.",
+    "Local Natural Earth-like GeoJSON assets detected for offline basemap rendering."
   ]
 }

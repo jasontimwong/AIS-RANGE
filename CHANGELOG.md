@@ -2,6 +2,55 @@
 
 所有重要变更都会记录在此文件中。
 
+## [3.3.1] - 2025-08-14
+
+### 🔧 改进 Changed
+- 底图评估增强：`tools/basemap_eval.py` 新增对 Natural Earth/本地 `ui/public/geo/*.json` 资源的检测与摘要输出；当 `simplified-water-polygons-3857.zip` 体积异常时自动标注并建议替代
+- 后端状态增强：`GET /basemap/status` 返回 `natural_earth_available` 字段，便于前端与运维观测
+- 测试补充：新增 `tests/tiling/test_basemap_status.py` 与 `tests/tools/test_basemap_eval.py`，覆盖静态底图端点与评估报告结构
+### 🧹 文档与冗余清理
+- 合并 `ui/ECDIS_IMPLEMENTATION_PLAN.md` 到 `ui/README.md`，统一实现与使用文档
+- 移除独立 `AISLayer` 覆盖层，AIS绘制已整合进 `CanvasMap`，避免图层不一致
+
+### 🐛 修复 Fixed
+- `CHANGELOG.md` 底部“当前版本”标注与顶部版本不一致的问题
+
+---
+
+## [3.3.0] - 2025-08-12
+
+### 🎉 主要更新 Major Updates
+- **动态避碰系统** - 完整实现基于COLREG规则的动态路径规划
+- **AIS集成** - 实时AIS数据集成与风险评估
+- **COLREG合规** - 实现对遇、交叉、追越等避让规则
+
+### ✨ 新增功能 Added
+- 动态路径规划系统
+  - 基于AIS数据的实时风险评估
+  - COLREG规则引擎（Rule 13/14/15/16/17）
+  - CPA/TCPA计算与碰撞风险预测
+  - 自动生成避让航路点
+- AIS系统集成
+  - WebSocket实时数据推送
+  - 多目标同时跟踪
+  - 风险等级分类（HIGH/MEDIUM/LOW）
+- 前端可视化增强
+  - 原始路径与动态路径对比显示
+  - AIS目标实时显示
+  - 威胁目标高亮警告
+
+### 🔧 改进 Changed
+- 优化路径规划算法性能
+- 改进前端地图渲染效率
+- 修复AIS图标拖拽同步问题
+- 清理冗余测试文件
+
+### 🐛 修复 Fixed
+- 修复AIS图标在地图拖拽时消失的问题
+- 修复动态路径规划按钮被禁用的问题
+- 修复COLREG遭遇类型判断枚举比较错误
+- 修复避让航路点生成距离限制过严的问题
+
 ## [3.2.0] - 2025-08-11
 
 ### 🎉 主要更新 Major Updates
@@ -213,6 +262,12 @@ data/tss/
 
 ## 交付记录 Delivery History
 
+### v3.3.0 交付确认 (2025-08-12)
+- ✅ **系统状态**: PRODUCTION READY
+- ✅ **动态避碰**: COLREG 13/14/15/16/17 规则联动，CPA/TCPA 风险预测
+- ✅ **AIS 集成**: WebSocket 实时推送，多目标跟踪与风险分级
+- ✅ **前端可视化**: 原始/动态路径对比、威胁目标高亮
+
 ### v3.2.0 交付确认 (2025-08-11)
 - ✅ **系统状态**: PRODUCTION READY
 - ✅ **规则覆盖**: 16/16 (100%)
@@ -239,4 +294,4 @@ data/tss/
 - 初步规则验证
 - API服务框架
 
-当前版本: **3.2.0** - 全球港口扩展版
+当前版本: **3.3.1** - 底图评估与状态增强版

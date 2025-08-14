@@ -1,6 +1,8 @@
 """
 AIS Simulator Data - 模拟在上海-新加坡航线上的船只
 生成对我们航线构成潜在威胁的AIS目标
+
+新增: 提供可切换场景支持，包括 "default" 与更激进的 "aggressive" 攻击场景。
 """
 
 from typing import List, Dict, Any
@@ -23,6 +25,54 @@ AIS_SIMULATION_VESSELS = [
         "draught": 4.5,
         "destination": "CHONGMING",
         "nav_status": 0  # Under way using engine
+    },
+
+    # 1a. 高威胁目标 - 对遇态势 
+    {
+        "mmsi": "413999001", 
+        "name": "HIGH RISK VESSEL 1",
+        "type": "cargo",
+        "position": [121.52, 31.23],  # 直接在我们起始点前方很近
+        "course": 270,  # 向西，与我们向东航行形成直接对遇
+        "speed": 18,
+        "heading": 270,
+        "length": 200,
+        "width": 32,
+        "draught": 10.0,
+        "destination": "HEAD ON THREAT",
+        "nav_status": 0
+    },
+
+    # 1b. 高威胁目标 - 交叉态势
+    {
+        "mmsi": "413999002",
+        "name": "HIGH RISK VESSEL 2", 
+        "type": "tanker",
+        "position": [121.51, 31.235],  # 极其接近起始位置
+        "course": 180,  # 向南，横穿我们的航线
+        "speed": 16,
+        "heading": 180,
+        "length": 250,
+        "width": 40,
+        "draught": 12.0,
+        "destination": "CROSSING THREAT",
+        "nav_status": 0
+    },
+
+    # 1c. 中等威胁目标 - 追越态势
+    {
+        "mmsi": "413999003",
+        "name": "MEDIUM RISK VESSEL",
+        "type": "container",
+        "position": [121.45, 31.21],  # 在我们后方但速度更快
+        "course": 85,  # 向东偏北，追越我们
+        "speed": 20,
+        "heading": 85,
+        "length": 300,
+        "width": 45,
+        "draught": 14.0,
+        "destination": "OVERTAKING THREAT",
+        "nav_status": 0
     },
     
     # 2. 东海区域 - 渔船群
@@ -197,6 +247,91 @@ AIS_SIMULATION_VESSELS = [
         "nav_status": 2  # Not under command
     }
 ]
+
+# 更激进的攻击场景：在上海外海直接在原始航迹前方布置一条“横向屏障”，
+# 由多艘高速大船构成，迫使动态规划产生明显绕行。
+AIS_SIMULATION_VESSELS_AGGRESSIVE = [
+    {
+        "mmsi": "999888001",
+        "name": "ATTACK BARRIER 1",
+        "type": "tanker",
+        "position": [121.56, 31.235],  # 紧贴起航点前方
+        "course": 180,  # 南向，横穿
+        "speed": 20,
+        "heading": 180,
+        "length": 300,
+        "width": 50,
+        "draught": 14.0,
+        "destination": "AGGRESSIVE LINE",
+        "nav_status": 0
+    },
+    {
+        "mmsi": "999888002",
+        "name": "ATTACK BARRIER 2",
+        "type": "tanker",
+        "position": [121.60, 31.232],
+        "course": 180,
+        "speed": 21,
+        "heading": 180,
+        "length": 320,
+        "width": 52,
+        "draught": 15.0,
+        "destination": "AGGRESSIVE LINE",
+        "nav_status": 0
+    },
+    {
+        "mmsi": "999888003",
+        "name": "ATTACK BARRIER 3",
+        "type": "tanker",
+        "position": [121.64, 31.228],
+        "course": 180,
+        "speed": 22,
+        "heading": 180,
+        "length": 320,
+        "width": 52,
+        "draught": 15.0,
+        "destination": "AGGRESSIVE LINE",
+        "nav_status": 0
+    },
+    {
+        "mmsi": "999888004",
+        "name": "ATTACK BARRIER 4",
+        "type": "cargo",
+        "position": [121.68, 31.225],
+        "course": 180,
+        "speed": 19,
+        "heading": 180,
+        "length": 260,
+        "width": 40,
+        "draught": 12.0,
+        "destination": "AGGRESSIVE LINE",
+        "nav_status": 0
+    },
+    {
+        "mmsi": "999888005",
+        "name": "ATTACK BARRIER 5",
+        "type": "cargo",
+        "position": [121.72, 31.222],
+        "course": 180,
+        "speed": 19,
+        "heading": 180,
+        "length": 240,
+        "width": 36,
+        "draught": 11.0,
+        "destination": "AGGRESSIVE LINE",
+        "nav_status": 0
+    },
+]
+
+
+def get_simulation_vessels(scenario: str = "default"):
+    """根据场景返回AIS模拟船舶列表。
+    - default: 原有数据
+    - aggressive: 在 default 基础上叠加攻击屏障
+    """
+    if scenario == "aggressive":
+        return AIS_SIMULATION_VESSELS + AIS_SIMULATION_VESSELS_AGGRESSIVE
+    return AIS_SIMULATION_VESSELS
 
 def generate_ais_messages(base_time: datetime = None) -> List[Dict[str, Any]]:
     """

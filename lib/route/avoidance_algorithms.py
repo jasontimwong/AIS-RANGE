@@ -39,7 +39,7 @@ class COLREGAvoidance:
         # 按风险优先级排序
         high_risk_assessments = [
             assessment for assessment in risk_assessments 
-            if assessment.risk_level in ['HIGH', 'CRITICAL']
+            if assessment.cpa_result.risk_level in ['HIGH', 'CRITICAL', 'MEDIUM']
         ]
         
         for assessment in high_risk_assessments:
@@ -63,13 +63,15 @@ class COLREGAvoidance:
         target = assessment.target
         encounter_type = assessment.encounter_type
         
-        if encounter_type == 'HEAD_ON':
+        from ..ais.risk_assessor import EncounterType
+        
+        if encounter_type == EncounterType.HEAD_ON:
             # 对遇：向右转
             return self._head_on_avoidance(own_position, own_course, target)
-        elif encounter_type == 'CROSSING_GIVE_WAY':
+        elif encounter_type == EncounterType.CROSSING_GIVE_WAY:
             # 交叉让路：我船需避让
             return self._crossing_avoidance(own_position, own_course, target)
-        elif encounter_type == 'OVERTAKING':
+        elif encounter_type == EncounterType.OVERTAKING:
             # 追越：追越船避让
             return self._overtaking_avoidance(own_position, own_course, target)
         
@@ -159,8 +161,8 @@ class COLREGAvoidance:
         # 计算到目标的距离和方位
         distance_to_target = self._calculate_distance(current_pos, target.position)
         
-        if distance_to_target > 10:  # 距离太远，不需要插入避让点
-            return None
+        # 对于高风险目标，即使距离较远也要生成避让点
+        # 距离检查改为基于实际需要，而不是简单的10海里限制
         
         # 在当前位置和下一个航路点之间插入避让点
         # 使用新的航向计算避让点

@@ -16,6 +16,8 @@ export default defineConfig({
       '/import': 'http://localhost:8000',
       '/enc': 'http://localhost:8000',
       '/status': 'http://localhost:8000',
+      '/api/route': 'http://localhost:8000',
+      '/api/eval': 'http://localhost:8000',
       '/api/ais': 'http://localhost:8000',
       '/ws': {
         target: 'http://localhost:8000',

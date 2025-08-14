@@ -5,7 +5,7 @@ AIS数据解析器 - 将模拟数据转换为AISTarget对象
 from typing import List, Dict, Any
 from datetime import datetime
 from lib.ais import AISTarget, NavStatus, ShipType
-from lib.ais.ais_simulator_data import AIS_SIMULATION_VESSELS
+from lib.ais.ais_simulator_data import get_simulation_vessels
 
 class AISParser:
     """AIS数据解析器"""
@@ -47,10 +47,10 @@ class AISParser:
         return target
     
     @staticmethod
-    def get_all_targets() -> List[AISTarget]:
-        """获取所有模拟AIS目标"""
+    def get_all_targets(scenario: str = "default") -> List[AISTarget]:
+        """获取所有模拟AIS目标，支持场景切换"""
         targets = []
-        for vessel_data in AIS_SIMULATION_VESSELS:
+        for vessel_data in get_simulation_vessels(scenario):
             try:
                 target = AISParser.parse_simulation_vessel(vessel_data)
                 targets.append(target)
@@ -60,12 +60,12 @@ class AISParser:
     
     @staticmethod
     def get_targets_in_area(center_lat: float, center_lon: float, 
-                           radius_nm: float) -> List[AISTarget]:
+                           radius_nm: float, scenario: str = "default") -> List[AISTarget]:
         """获取指定区域内的AIS目标"""
         import math
         
         targets = []
-        all_targets = AISParser.get_all_targets()
+        all_targets = AISParser.get_all_targets(scenario)
         
         for target in all_targets:
             # 计算距离（简化计算）

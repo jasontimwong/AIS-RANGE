@@ -13,6 +13,12 @@ from pathlib import Path
 import tempfile
 import logging
 from datetime import datetime
+from lib.energy.fuel_estimator import evaluate_delta, polyline_length_nm
+import os
+try:
+    import yaml
+except Exception:
+    yaml = None
 import json
 import sys
 
@@ -30,6 +36,10 @@ from lib.planner.hybrid_astar import HybridAStar, PlannerConfig, Route
 from lib.checks.route_checker import RouteChecker
 from lib.io.rtz import RTZConverter, save_rtz, load_rtz
 
+# Configure logging early (before using logger)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Import our new route planning service
 try:
     from service.route_planner_service import RoutePlannerService
@@ -37,10 +47,6 @@ try:
 except Exception as e:
     logger.warning(f"Could not load RoutePlannerService: {e}")
     route_service = None
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -764,12 +770,24 @@ async def basemap_status():
 
     osm_tiles = count_tiles(tiles_osm_path)
     seamark_tiles = count_tiles(tiles_seamark_path)
+    # Detect Natural Earth-like local geojsons used by UI
+    ui_geo_dir = Path(__file__).resolve().parents[1] / "ui/public/geo"
+    ne_files = [
+        ui_geo_dir / "asia-pacific-land.json",
+        ui_geo_dir / "asia-pacific-bathymetry.json",
+        ui_geo_dir / "asia-pacific-seamarks.json",
+        ui_geo_dir / "world-land-simplified.json",
+        ui_geo_dir / "world-simplified.json",
+    ]
+    ne_available = any(p.exists() and p.stat().st_size > 0 for p in ne_files)
+
     return {
         "osm_tiles_root": str(tiles_osm_path),
         "openseamap_tiles_root": str(tiles_seamark_path),
         "osm_tiles_count": osm_tiles,
         "openseamap_tiles_count": seamark_tiles,
-        "ready": osm_tiles > 0 and seamark_tiles > 0
+        "natural_earth_available": ne_available,
+        "ready": (osm_tiles > 0 and seamark_tiles > 0) or ne_available
     }
 
 
@@ -898,6 +916,44 @@ async def get_config():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 评估参数（供前端评估模块使用）
+@app.get("/api/eval/params")
+async def get_eval_params():
+    """返回评估所需参数：按系统船舶信息与默认能耗/价格计算。
+    - vessel_speed_kn: 优先取 config/cost_defaults.yaml 的 cruise_speed(m/s) 转换为节；否则回退 15 节
+    - fuel_per_nm_ton: 每海里油耗（吨/海里），默认 0.072，可通过环境变量 EVAL_FUEL_PER_NM_TON 覆盖
+    - fuel_price_usd_per_ton: 燃油价格（美元/吨），默认 650，可通过环境变量 EVAL_FUEL_PRICE_USD_PER_TON 覆盖
+    - co2_per_ton_fuel: 吨燃油对应二氧化碳排放（吨），默认 3.114
+    """
+    try:
+        vessel_speed_kn = 15.0
+        cfg_path = Path("config/cost_defaults.yaml")
+        if yaml and cfg_path.exists():
+            with open(cfg_path, 'r') as f:
+                cfg = yaml.safe_load(f) or {}
+            v = (cfg.get('vessel_parameters') or {}).get('cruise_speed')
+            if isinstance(v, (int, float)) and v > 0:
+                vessel_speed_kn = float(v) * 1.943844  # m/s -> knots
+
+        fuel_per_nm_ton = float(os.environ.get('EVAL_FUEL_PER_NM_TON', '0.072'))
+        fuel_price_usd_per_ton = float(os.environ.get('EVAL_FUEL_PRICE_USD_PER_TON', '650'))
+        co2_per_ton_fuel = 3.114
+
+        return {
+            "vessel_speed_kn": vessel_speed_kn,
+            "fuel_per_nm_ton": fuel_per_nm_ton,
+            "fuel_price_usd_per_ton": fuel_price_usd_per_ton,
+            "co2_per_ton_fuel": co2_per_ton_fuel,
+            # expose tuning knobs for UI
+            "threat_speed_threshold_kn": float(10.0),
+            "risk_weights": {"HIGH": 1.0, "MEDIUM": 0.6, "LOW": 0.3},
+            "colreg_speed_factor_default": float(0.85),
+            "s102_shallow_factor_default": float(1.05)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/config/update")
 async def update_config(config_update: Dict[str, Any]):
     """Update system configuration."""
@@ -928,6 +984,7 @@ class AISWebSocketManager:
         self.active_connections: List[WebSocket] = []
         self.ais_manager = None
         self.risk_assessor = None
+        self.scenario: str = "default"
         self.dynamic_planner = None
         
     def initialize(self):
@@ -938,10 +995,21 @@ class AISWebSocketManager:
         
         self.ais_manager = AISManager()
         self.risk_assessor = AISRiskAssessor()
-        self.dynamic_planner = DynamicRoutePlanner(self.ais_manager)
+        # 将可航区域获取器传入动态规划器，确保使用完整规划系统进行对比
+        from lib.region.feasible_region import FeasibleRegion
+        def get_region():
+            return getattr(state, 'feasible_region', None)
+        def get_planner_cfg():
+            return getattr(state, 'planner', None)
+        self.dynamic_planner = DynamicRoutePlanner(self.ais_manager, get_feasible_region=get_region, get_planner_config=get_planner_cfg)
         self.ais_manager.subscribe(self._on_ais_update)
         self.ais_manager.start()
         logger.info("AIS系统已启动")
+
+    def set_scenario(self, scenario: str):
+        self.scenario = scenario if scenario in ("default", "aggressive") else "default"
+        if self.ais_manager:
+            self.ais_manager.set_scenario(self.scenario)
         
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -1051,6 +1119,16 @@ async def get_ais_targets(lat: float = 31.23, lon: float = 121.508, range_nm: fl
         "count": len(targets)
     }
 
+# 切换AIS攻击场景（default/aggressive）
+@app.post("/api/ais/scenario")
+async def set_ais_scenario(payload: Dict[str, Any]):
+    scenario = payload.get("scenario", "default")
+    ws_manager.set_scenario(scenario)
+    # 场景切换后强制刷新一次AIS数据，便于前端立即看到威胁
+    if ws_manager.ais_manager:
+        ws_manager.ais_manager.update_targets()
+    return {"ok": True, "scenario": ws_manager.scenario}
+
 @app.post("/api/ais/risk")
 async def assess_risk(request: Dict[str, Any]):
     """评估碰撞风险"""
@@ -1083,6 +1161,71 @@ async def assess_risk(request: Dict[str, Any]):
             for a in assessments[:10]  # 前10个
         ]
     }
+
+# 高级评估：基于段级路径与推进模型的燃油增量计算
+@app.post("/api/eval/fuel")
+async def eval_fuel(payload: Dict[str, Any]):
+    """Evaluate delta fuel/time/cost for a replaced segment.
+    Input:
+      - original_route: [{lat,lon}, ...]  (segment only)
+      - dynamic_route:  [{lat,lon}, ...]  (segment only)
+      - model: 'simple'|'power'
+      - optional overrides: vessel_speed_kn, fuel_per_nm_ton, fuel_price_usd_per_ton, co2_per_ton_fuel, k_power_v3, sfoc_g_per_kwh
+    """
+    try:
+      orig = payload.get("original_route") or []
+      dyn = payload.get("dynamic_route") or []
+      if len(orig) < 2 or len(dyn) < 2:
+          raise HTTPException(status_code=400, detail="Insufficient points for evaluation")
+
+      def to_latlon_list(items: List[Dict[str, float]]):
+          return [(float(it["lat"]), float(it["lon"])) for it in items]
+
+      orig_ll = to_latlon_list(orig)
+      dyn_ll = to_latlon_list(dyn)
+
+      model = payload.get("model", "power")
+      vessel_speed_kn = float(payload.get("vessel_speed_kn", 19.43844))
+      fuel_per_nm_ton = float(payload.get("fuel_per_nm_ton", 0.072))
+      fuel_price_usd_per_ton = float(payload.get("fuel_price_usd_per_ton", 650.0))
+      co2_per_ton_fuel = float(payload.get("co2_per_ton_fuel", 3.114))
+      k_power_v3 = float(payload.get("k_power_v3", 1.0))
+      sfoc_g_per_kwh = float(payload.get("sfoc_g_per_kwh", 180.0))
+
+      # 可选修正：COLREG降速、S-111/S-102 简化应用
+      colreg_speed_factor = float(payload.get("colreg_speed_factor", 1.0))  # e.g. 0.85 降速
+      v_orig = float(payload.get("vessel_speed_kn_original", vessel_speed_kn))
+      v_dyn = float(payload.get("vessel_speed_kn_dynamic", vessel_speed_kn * colreg_speed_factor))
+      v_orig = max(0.5, v_orig)
+      v_dyn = max(0.5, v_dyn)
+
+      shallow_factor_dynamic = 1.0
+      if bool(payload.get("s102_shallow", False)):
+          # 简化：浅水附加阻力 → 等效燃油增加系数
+          shallow_factor_dynamic = float(payload.get("s102_shallow_factor", 1.05))
+
+      result = evaluate_delta(
+          orig_ll,
+          dyn_ll,
+          model=model,
+          vessel_speed_kn=vessel_speed_kn,
+          vessel_speed_kn_original=v_orig,
+          vessel_speed_kn_dynamic=v_dyn,
+          fuel_per_nm_ton=fuel_per_nm_ton,
+          fuel_price_usd_per_ton=fuel_price_usd_per_ton,
+          co2_per_ton_fuel=co2_per_ton_fuel,
+          k_power_v3=k_power_v3,
+          sfoc_g_per_kwh=sfoc_g_per_kwh,
+          beta_turn_ton_per_deg=float(payload.get("beta_turn_ton_per_deg", 0.00005)),
+          beta_turn_count_ton=float(payload.get("beta_turn_count_ton", 0.005)),
+          shallow_factor_dynamic=shallow_factor_dynamic,
+      )
+
+      return {"success": True, **result, "notes": {"colreg_speed_factor": colreg_speed_factor, "vessel_speed_kn_original": v_orig, "vessel_speed_kn_dynamic": v_dyn, "s111_current": payload.get("s111_current", False), "s102_shallow": payload.get("s102_shallow", False), "s102_shallow_factor": shallow_factor_dynamic}}
+    except HTTPException:
+      raise
+    except Exception as e:
+      raise HTTPException(status_code=500, detail=str(e))
 
 # 动态路径规划API
 @app.post("/api/route/initialize")

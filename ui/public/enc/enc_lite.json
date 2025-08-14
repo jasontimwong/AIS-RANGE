@@ -1,5 +1,5 @@
 {
-  coast: [
+  "coast": [
     [
       [
         [0.000, -0.005],
@@ -14,7 +14,7 @@
       ]
     ]
   ],
-  shallow: [
+  "shallow": [
     [
       [
         [0.008, 0.008],
@@ -34,8 +34,8 @@
       ]
     ]
   ],
-  tss: {
-    lanes: [
+  "tss": {
+    "lanes": [
       [
         [
           [0.010, 0.005],
@@ -46,7 +46,7 @@
         ]
       ]
     ],
-    sep_zones: [
+    "sep_zones": [
       [
         [
           [0.012, 0.008],
@@ -58,5 +58,5 @@
       ]
     ]
   },
-  s124: { speed_limits: [], prohibited: [] }
+  "s124": { "speed_limits": [], "prohibited": [] }
 }

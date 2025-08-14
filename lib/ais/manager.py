@@ -18,6 +18,7 @@ class AISManager:
         self._running = False
         self._update_thread = None
         self._last_update = datetime.utcnow()
+        self._scenario: str = "default"
         
     def start(self):
         """启动AIS管理器"""
@@ -50,7 +51,7 @@ class AISManager:
     def update_targets(self):
         """更新所有AIS目标"""
         # 获取最新数据
-        new_targets = AISParser.get_all_targets()
+        new_targets = AISParser.get_all_targets(self._scenario)
         
         # 更新目标字典
         for target in new_targets:
@@ -109,6 +110,17 @@ class AISManager:
                 targets_in_range.append(target)
         
         return targets_in_range
+
+    def set_scenario(self, scenario: str):
+        """设置AIS模拟场景: 'default' 或 'aggressive'"""
+        if scenario not in ("default", "aggressive"):
+            scenario = "default"
+        self._scenario = scenario
+        # 切换场景时清空旧目标，避免残留影响风险评估
+        self.targets = {}
+
+    def get_scenario(self) -> str:
+        return self._scenario
     
     def subscribe(self, callback: Callable):
         """订阅AIS更新"""

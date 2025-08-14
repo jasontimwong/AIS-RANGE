@@ -4,11 +4,26 @@ import { ECDIS_PALETTE, ColorScheme, getDepthColor, DEFAULT_SAFETY_SETTINGS } fr
 
 export type LonLat = [number, number];
 
-type Props = { 
+interface AISTarget {
+  mmsi: string;
+  name: string;
+  lat: number;
+  lon: number;
+  sog: number;
+  cog: number;
+  heading: number;
+  ship_type: number;
+  nav_status: number;
+}
+
+  type Props = { 
   enc: any; 
   route: LonLat[]; 
   dynamicRoute?: LonLat[];
   dynamicRouteEnabled?: boolean;
+    avoidancePoints?: LonLat[];
+  aisTargets?: AISTarget[];
+  aisEnabled?: boolean;
   style?: React.CSSProperties;
   onViewChange?: (center: LonLat, zoom: number) => void;
 };
@@ -268,6 +283,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       vp.current.zoom = Math.max(2, Math.min(20, vp.current.zoom + delta));
       state.current.needsRedraw = true;
       requestRedraw();
+      if (props.onViewChange) props.onViewChange(vp.current.center, vp.current.zoom);
     };
 
     // 鼠标拖拽
@@ -345,9 +361,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         state.current.needsRedraw = true;
         requestRedraw();
         // 通知父组件视图变化
-        if (props.onViewChange) {
-          props.onViewChange(vp.current.center, vp.current.zoom);
-        }
+        if (props.onViewChange) props.onViewChange(vp.current.center, vp.current.zoom);
       }
     };
 
@@ -828,9 +842,21 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
 
     // 规划航线（支持动态路径的双路径可视化）
     if (layers.current.route && props.route?.length > 1) {
-      const showDynamicRoute = props.dynamicRouteEnabled && props.dynamicRoute?.length > 1;
+      const isDynamicMode = Boolean(
+        props.dynamicRouteEnabled && Array.isArray(props.dynamicRoute) && props.dynamicRoute.length > 1
+      );
       
-      if (!showDynamicRoute) {
+      // 调试信息
+      if (props.dynamicRouteEnabled) {
+        console.log('动态路径渲染检查:', {
+          enabled: props.dynamicRouteEnabled,
+          routeLength: Array.isArray(props.dynamicRoute) ? props.dynamicRoute.length : 0,
+          showDynamic: isDynamicMode,
+          dynamicRoute: props.dynamicRoute
+        });
+      }
+      
+      if (!isDynamicMode) {
         // 标准模式：显示XTD走廊
         ctx.strokeStyle = "rgba(163, 190, 140, 0.3)";
         ctx.lineWidth = 1;
@@ -865,11 +891,11 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
 
       // 原始航线
-      if (showDynamicRoute) {
-        // 动态模式：原路径显示为蓝色虚线
-        ctx.strokeStyle = "rgba(136, 192, 208, 0.7)";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 5]);
+      if (isDynamicMode) {
+        // 动态模式：原路径显示为蓝色虚线（弱化显示）
+        ctx.strokeStyle = "rgba(136, 192, 208, 0.8)";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 6]);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
       } else {
@@ -896,58 +922,105 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       ctx.setLineDash([]); // 重置虚线
 
       // 动态路径（如果启用）
-      if (showDynamicRoute) {
-        ctx.strokeStyle = "#a3be8c"; // 绿色
-        ctx.lineWidth = 4;
+      if (isDynamicMode) {
+        const dyn = props.dynamicRoute as LonLat[];
+        // 将动态路径投影到屏幕坐标，容错处理NaN/无效点
+        const dynScreen: Array<[number, number]> = dyn
+          .map(p => project(p))
+          .filter(([x,y]) => Number.isFinite(x) && Number.isFinite(y));
+
+        // 计算屏幕空间偏移的并行路径，使其在与原路径重叠时也能清晰可见
+        const OFFSET_PX = 6; // 固定侧向偏移像素
+        const shifted: Array<[number, number]> = dynScreen.map((pt, i) => {
+          let dx = 0, dy = 0;
+          if (i < dynScreen.length - 1) {
+            // 使用当前段的切向量
+            dx = dynScreen[i + 1][0] - pt[0];
+            dy = dynScreen[i + 1][1] - pt[1];
+          } else if (i > 0) {
+            // 使用上一段的切向量
+            dx = pt[0] - dynScreen[i - 1][0];
+            dy = pt[1] - dynScreen[i - 1][1];
+          }
+          const len = Math.hypot(dx, dy) || 1;
+          // 垂直于切向量的法向量（屏幕空间）
+          const nx = -dy / len;
+          const ny = dx / len;
+          const x = pt[0] + nx * OFFSET_PX;
+          const y = pt[1] + ny * OFFSET_PX;
+          return [x, y];
+        });
+
+        // 动态路径：高亮红色+发光边
+        ctx.strokeStyle = "#ff4d4f";
+        ctx.lineWidth = 6;
         ctx.setLineDash([]);
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 77, 79, 0.85)";
+        ctx.shadowBlur = 10;
+
         ctx.beginPath();
-        let firstDynamic = true;
-        for (const p of props.dynamicRoute) {
-          const [x, y] = project(p);
-          if (firstDynamic) {
-            ctx.moveTo(x, y);
-            firstDynamic = false;
-          } else {
-            ctx.lineTo(x, y);
+        let validCount = 0;
+        shifted.forEach(([x, y], idx) => {
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            validCount++;
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
           }
+        });
+        // 如偏移路径异常（超出视图或数值问题），回退绘制未偏移的动态路径，避免在高缩放下消失
+        if (validCount < 2) {
+          ctx.beginPath();
+          dynScreen.forEach(([x, y], idx) => {
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+              if (idx === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+          });
         }
         ctx.stroke();
+        ctx.restore();
         
         // 动态路径的方向箭头（橙色）
-        ctx.strokeStyle = "#d08770";
+        ctx.strokeStyle = "#ff9f43";
         ctx.lineWidth = 2;
-        for (let i = 0; i < props.dynamicRoute.length - 1; i++) {
-          const [x1, y1] = project(props.dynamicRoute[i]);
-          const [x2, y2] = project(props.dynamicRoute[i + 1]);
+        const arrowPath = (pts: Array<[number, number]>) => {
+          for (let i = 0; i < pts.length - 1; i++) {
+            const [x1, y1] = pts[i];
+            const [x2, y2] = pts[i + 1];
+            if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) continue;
           
-          const midX = (x1 + x2) / 2;
-          const midY = (y1 + y2) / 2;
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
           
-          // 计算航向箭头
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          const arrowLen = 8;
-          const arrowAngle = Math.PI / 6;
+            // 计算航向箭头
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            const arrowLen = 8;
+            const arrowAngle = Math.PI / 6;
           
-          ctx.beginPath();
-          ctx.moveTo(midX, midY);
-          ctx.lineTo(
-            midX - arrowLen * Math.cos(angle - arrowAngle),
-            midY - arrowLen * Math.sin(angle - arrowAngle)
-          );
-          ctx.moveTo(midX, midY);
-          ctx.lineTo(
-            midX - arrowLen * Math.cos(angle + arrowAngle),
-            midY - arrowLen * Math.sin(angle + arrowAngle)
-          );
-          ctx.stroke();
-        }
+            ctx.beginPath();
+            ctx.moveTo(midX, midY);
+            ctx.lineTo(
+              midX - arrowLen * Math.cos(angle - arrowAngle),
+              midY - arrowLen * Math.sin(angle - arrowAngle)
+            );
+            ctx.moveTo(midX, midY);
+            ctx.lineTo(
+              midX - arrowLen * Math.cos(angle + arrowAngle),
+              midY - arrowLen * Math.sin(angle + arrowAngle)
+            );
+            ctx.stroke();
+          }
+        };
+        arrowPath(shifted);
+        // 若回退绘制了未偏移路径，也补充箭头
+        if (validCount < 2) arrowPath(dynScreen);
       }
 
       // 原始航线方向箭头
-      ctx.strokeStyle = showDynamicRoute ? "rgba(94, 129, 172, 0.6)" : "#5e81ac";
+      ctx.strokeStyle = isDynamicMode ? "rgba(94, 129, 172, 0.7)" : "#5e81ac";
       ctx.lineWidth = 2;
       for (let i = 0; i < props.route.length - 1; i++) {
         const [x1, y1] = project(props.route[i]);
@@ -973,6 +1046,32 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
           midY - arrowLen * Math.sin(angle + arrowAngle)
         );
         ctx.stroke();
+      }
+
+      // 避让点高亮（红色闪烁圆点）
+      if (isDynamicMode && props.avoidancePoints && props.avoidancePoints.length > 0) {
+        const time = performance.now() / 1000;
+        const pulse = 0.5 + 0.5 * Math.sin(time * 2 * Math.PI * 0.8); // 0..1
+        props.avoidancePoints.forEach(([lon, lat]) => {
+          const [x, y] = project([lon, lat]);
+          ctx.save();
+          ctx.fillStyle = `rgba(255, 77, 79, ${0.6 + 0.4 * pulse})`;
+          ctx.strokeStyle = "#ff4d4f";
+          ctx.lineWidth = 2;
+          ctx.shadowColor = "rgba(255, 77, 79, 0.9)";
+          ctx.shadowBlur = 12;
+          
+          // 外圈
+          ctx.beginPath();
+          ctx.arc(x, y, 10 + 6 * pulse, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // 实心点
+          ctx.beginPath();
+          ctx.arc(x, y, 4 + 2 * pulse, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
       }
 
       // 航路点（增强版）
@@ -1076,10 +1175,99 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     ctx.fillText(`Zoom: ${zoom.toFixed(1)}`, 12, 40);
     ctx.fillText(`Route: ${props.route.length} waypoints`, 12, 56);
 
+    // 绘制AIS目标（在所有图层之上，独立于其他图层状态）
+    if (props.aisEnabled && props.aisTargets && props.aisTargets.length > 0) {
+      drawAISTargets(ctx, props.aisTargets);
+    }
+
     // 辅助函数
     function project([lon, lat]: LonLat): [number, number] {
-      const { x, y } = lonLatToXY(lon, lat, center[0], center[1], zoom, width, height);
+      const { x, y } = lonLatToXY(lon, lat, vp.current.center[0], vp.current.center[1], vp.current.zoom, width, height);
       return [x, y];
+    }
+
+    // 绘制AIS目标
+    function drawAISTargets(ctx: CanvasRenderingContext2D, targets: AISTarget[]) {
+      if (!targets || targets.length === 0) return;
+
+      // 船舶类型颜色
+      const getShipColor = (ship_type: number): string => {
+        if (ship_type >= 60 && ship_type < 70) return '#FF6B6B';  // Passenger - 红色
+        if (ship_type >= 70 && ship_type < 80) return '#4ECDC4';  // Cargo - 青色
+        if (ship_type >= 80 && ship_type < 90) return '#FFD93D';  // Tanker - 黄色
+        if (ship_type === 30) return '#95E77E';  // Fishing - 绿色
+        return '#B8B8B8';  // Other - 灰色
+      };
+
+      // 航行状态符号
+      const getNavStatusSymbol = (nav_status: number): string => {
+        switch(nav_status) {
+          case 1: return '⚓';  // At anchor
+          case 2: return '⚠️';  // Not under command
+          case 7: return '🎣';  // Fishing
+          default: return '';
+        }
+      };
+
+      targets.forEach(target => {
+        const [x, y] = project([target.lon, target.lat]);
+        
+        // 跳过屏幕外的目标
+        if (x < -50 || x > width + 50 || y < -50 || y > height + 50) return;
+
+        // 绘制船舶
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(target.heading * Math.PI / 180);
+
+        // 船舶三角形
+        const size = zoom > 10 ? 12 : 8;
+        ctx.fillStyle = getShipColor(target.ship_type);
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(-size/2, size);
+        ctx.lineTo(size/2, size);
+        ctx.closePath();
+        ctx.fill();
+
+        // 边框
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.restore();
+
+        // 速度矢量
+        if (target.sog > 0.5) {
+          const vectorLength = Math.min(target.sog * 3, 50);
+          const endX = x + vectorLength * Math.sin(target.cog * Math.PI / 180);
+          const endY = y - vectorLength * Math.cos(target.cog * Math.PI / 180);
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 标签（缩放级别足够时显示）
+        if (zoom > 10) {
+          ctx.fillStyle = '#FFF';
+          ctx.font = '10px monospace';
+          ctx.fillText(target.name || target.mmsi, x + 15, y - 5);
+          ctx.fillText(`${target.sog.toFixed(1)}kn`, x + 15, y + 5);
+          
+          // 航行状态符号
+          const symbol = getNavStatusSymbol(target.nav_status);
+          if (symbol) {
+            ctx.font = '12px sans-serif';
+            ctx.fillText(symbol, x - 20, y);
+          }
+        }
+      });
     }
 
     // 根据视图绘制 WebMercator XYZ 瓦片

@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { AISTarget } from '../components/AISLayer';
+// 与 CanvasMap 中 AISTarget 结构保持一致
+export interface AISTarget {
+  mmsi: string;
+  name: string;
+  lat: number;
+  lon: number;
+  sog: number;
+  cog: number;
+  heading: number;
+  ship_type: number;
+  nav_status: number;
+}
 
 export const useAISData = (enabled: boolean = false) => {
   const [targets, setTargets] = useState<AISTarget[]>([]);
@@ -18,10 +29,14 @@ export const useAISData = (enabled: boolean = false) => {
       return;
     }
 
-    // 建立WebSocket连接
+    // 建立WebSocket连接（根据当前页面协议/主机构造，走Vite代理，从而避免CORS）
     const connect = () => {
       try {
-        const ws = new WebSocket('ws://localhost:3000/ws/ais');
+        const isSecure = window.location.protocol === 'https:';
+        const wsProtocol = isSecure ? 'wss:' : 'ws:';
+        const wsHost = window.location.host; // 包含端口
+        const wsUrl = `${wsProtocol}//${wsHost}/ws/ais`;
+        const ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
           console.log('AIS WebSocket connected');

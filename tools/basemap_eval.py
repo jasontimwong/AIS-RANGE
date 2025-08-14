@@ -109,6 +109,41 @@ def main() -> None:
     simplified_zip = summarize_archive(osm_water_dir / "simplified-water-polygons-3857.zip")
     split_zip = summarize_archive(osm_water_dir / "water-polygons-split-3857.zip")
 
+    # Natural Earth/Natural-like local geojsons under ui/public/geo
+    ui_geo_dir = repo_root / "ui/public/geo"
+    def summarize_geojson(path: Path) -> Dict[str, object]:
+        exists = path.exists()
+        size = file_size(path) if exists else 0
+        sample_props = None
+        feature_count: Optional[int] = None
+        if exists and size > 0:
+            try:
+                with path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and data.get("type") == "FeatureCollection":
+                    feature_count = len(data.get("features", []))
+                    if feature_count:
+                        props = data["features"][0].get("properties", {})
+                        # avoid dumping large props
+                        sample_props = {k: props[k] for k in list(props)[:5]}
+            except Exception as e:
+                sample_props = {"error": str(e)}
+        return {
+            "path": str(path),
+            "exists": exists,
+            "size_bytes": size,
+            "feature_count": feature_count,
+            "sample_properties": sample_props,
+        }
+
+    natural_earth_assets = {
+        "asia_pacific_land": summarize_geojson(ui_geo_dir / "asia-pacific-land.json"),
+        "asia_pacific_bathymetry": summarize_geojson(ui_geo_dir / "asia-pacific-bathymetry.json"),
+        "asia_pacific_seamarks": summarize_geojson(ui_geo_dir / "asia-pacific-seamarks.json"),
+        "world_land_simplified": summarize_geojson(ui_geo_dir / "world-land-simplified.json"),
+        "world_simplified": summarize_geojson(ui_geo_dir / "world-simplified.json"),
+    }
+
     result = {
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "osm_tiles": osm_tiles_summary,
@@ -117,10 +152,12 @@ def main() -> None:
             "simplified_3857_zip": simplified_zip,
             "water_polygons_split_3857_zip": split_zip,
         },
+        "natural_earth_like": natural_earth_assets,
         "notes": [
             "Low-zoom raster tiles (z=0..2) cached for global baseline.",
             "OpenSeaMap seamark overlay cached for the same zooms.",
             "OSM simplified water polygons zip appears invalid/tiny on this mirror; full split archive present.",
+            "Local Natural Earth-like GeoJSON assets detected for offline basemap rendering.",
         ],
     }
 

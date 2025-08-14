@@ -5,12 +5,17 @@
 """
 
 import math
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..ais import AISTarget, AISRiskAssessor, AISManager
 from .avoidance_algorithms import COLREGAvoidance, AvoidanceAction
+from lib.planner.hybrid_astar import HybridAStar, PlannerConfig
+from lib.region.feasible_region import FeasibleRegion
+from shapely.geometry import Point
+from shapely.ops import unary_union
+from shapely.geometry import LineString
 
 @dataclass 
 class RouteWaypoint:
@@ -32,10 +37,14 @@ class DynamicRoute:
 class DynamicRoutePlanner:
     """动态路径规划器"""
     
-    def __init__(self, ais_manager: AISManager):
+    def __init__(self, ais_manager: AISManager,
+                 get_feasible_region: Optional[Callable[[], Optional[FeasibleRegion]]] = None,
+                 get_planner_config: Optional[Callable[[], Optional[object]]] = None):
         self.ais_manager = ais_manager
         self.risk_assessor = AISRiskAssessor()
         self.avoidance = COLREGAvoidance()
+        self._get_region = get_feasible_region or (lambda: None)
+        self._get_planner_cfg = get_planner_config or (lambda: None)
         
         # 规划参数
         self.own_vessel_speed = 15.0  # 本船速度（节）
@@ -44,6 +53,50 @@ class DynamicRoutePlanner:
         
         # 当前动态路径
         self.current_dynamic_route: Optional[DynamicRoute] = None
+
+    def _densify_latlon(self, latlon: List[Tuple[float, float]], step_m: float, lat0: float) -> List[Tuple[float, float]]:
+        """按固定米间距对 (lat, lon) 折线加密，提升路径点粒度。"""
+        if not latlon or len(latlon) < 2:
+            return latlon
+        import math
+        m_per_deg_lat = 111320.0
+        m_per_deg_lon = 111320.0 * math.cos(math.radians(lat0))
+        def to_xy(p: Tuple[float, float]):
+            return (p[1] * m_per_deg_lon, p[0] * m_per_deg_lat)
+        def to_ll(x: float, y: float):
+            return (y / m_per_deg_lat, x / m_per_deg_lon)
+        pts: List[Tuple[float, float]] = []
+        prev_xy = to_xy(latlon[0])
+        pts.append(latlon[0])
+        for i in range(1, len(latlon)):
+            curr_xy = to_xy(latlon[i])
+            dx = curr_xy[0] - prev_xy[0]
+            dy = curr_xy[1] - prev_xy[1]
+            seg_len = (dx*dx + dy*dy) ** 0.5
+            if seg_len <= step_m:
+                if latlon[i] != pts[-1]:
+                    pts.append(latlon[i])
+                prev_xy = curr_xy
+                continue
+            n = int(seg_len // step_m)
+            for k in range(1, n+1):
+                t = (k * step_m) / seg_len
+                x = prev_xy[0] + t * dx
+                y = prev_xy[1] + t * dy
+                pts.append(to_ll(x, y))
+            if (n * step_m) < seg_len:
+                pts.append(latlon[i])
+            prev_xy = curr_xy
+        # 去重
+        dedup: List[Tuple[float, float]] = []
+        seen = set()
+        for (la, lo) in pts:
+            key = (round(la, 7), round(lo, 7))
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup.append((la, lo))
+        return dedup
         
     def initialize_route(self, original_waypoints: List[Tuple[float, float]]) -> DynamicRoute:
         """初始化动态路径"""
@@ -75,34 +128,75 @@ class DynamicRoutePlanner:
         
         current_time = datetime.utcnow()
         
-        # 检查是否需要更新
-        if (current_time - self.current_dynamic_route.last_update).seconds < self.update_interval:
+        # 检查是否需要更新 (降低更新间隔为5秒，便于演示)
+        time_since_update = (current_time - self.current_dynamic_route.last_update).seconds
+        # 若尚未计算过威胁（active_threats为空），则不节流，立即计算
+        if time_since_update < 1 and self.current_dynamic_route.active_threats:
             return self.current_dynamic_route
         
         # 获取当前AIS目标
         self.ais_manager.update_targets()
         ais_targets = self.ais_manager.get_all_targets()
+        # 若切换为强攻击后，首次可能还未累积位置更新，直接使用当前集合
         
+        # 无论是否能重规划，都更新活跃威胁列表，避免UI显示为0
+        current_active = [t.mmsi for t in ais_targets][:10]
         if not ais_targets:
+            # 仍返回当前路径，但更新活跃威胁（为空）
+            self.current_dynamic_route.active_threats = []
             return self.current_dynamic_route
         
-        # 评估当前航路的风险
-        route_risks = self._assess_route_risks(current_position, ais_targets)
+        # 使用完整规划系统进行双路径严谨对比：
+        # baseline: 不考虑AIS威胁，仅基于ENC可航水域
+        # dynamic: 叠加AIS威胁缓冲区为临时no-go，重新规划
+        try:
+            region = self._get_region()
+        except Exception:
+            region = None
         
-        # 检查是否需要重新规划
-        high_risk_segments = [risk for risk in route_risks if risk['risk_level'] in ['HIGH', 'CRITICAL']]
+        if region is None:
+            # 回退到原有轻量逻辑
+            route_risks = self._assess_route_risks(current_position, ais_targets)
+            high_risk_segments = [risk for risk in route_risks if risk['risk_level'] in ['MEDIUM', 'HIGH', 'CRITICAL']]
+            if not high_risk_segments:
+                # 即使没有高风险航段，也同步活跃威胁信息
+                self.current_dynamic_route.active_threats = current_active
+                return self.current_dynamic_route
+            new_route = self._replan_route(current_position, high_risk_segments, ais_targets)
+            if new_route:
+                self.current_dynamic_route = new_route
+                self.current_dynamic_route.active_threats = current_active
+            return self.current_dynamic_route
+
+        # 计算目标点（取原始路径终点）
+        goal_lat, goal_lon = self.current_dynamic_route.original_route[-1]
         
-        if not high_risk_segments:
-            # 无高风险，保持原路径
+        # 1) 基准路径（无威胁掩膜）
+        baseline_latlon = self._plan_with_region(region, current_position, (goal_lat, goal_lon))
+        # 2) 动态路径（加入AIS威胁掩膜）→ 完整重规划（关键要求）
+        masked_region, _ = self._apply_ais_masks(region, ais_targets, current_position)
+        dynamic_latlon = self._plan_with_region(masked_region, current_position, (goal_lat, goal_lon))
+        
+        # 若动态规划失败，回退基准路径
+        selected_latlon = dynamic_latlon or baseline_latlon
+        if not selected_latlon:
             return self.current_dynamic_route
         
-        # 重新规划受威胁的航段
-        new_route = self._replan_route(current_position, high_risk_segments, ais_targets)
-        
-        if new_route:
-            self.current_dynamic_route = new_route
-            print(f"路径已重新规划，规避 {len(high_risk_segments)} 个威胁")
-        
+        # 更新current_dynamic_route为动态路径（用于UI展示红色）
+        # 注意：_plan_with_region 已返回 (lat, lon)，无需再次反变换
+        # 提升粒度（例如每 500m）
+        selected_latlon = self._densify_latlon(selected_latlon, 500.0, current_position[0])
+        baseline_latlon = self._densify_latlon(baseline_latlon or [], 500.0, current_position[0]) if baseline_latlon else baseline_latlon
+        new_waypoints = [
+            RouteWaypoint(lat=lat, lon=lon, sog=self.own_vessel_speed)
+            for (lat, lon) in selected_latlon
+        ]
+        self.current_dynamic_route = DynamicRoute(
+            waypoints=new_waypoints,
+            original_route=baseline_latlon or self.current_dynamic_route.original_route,
+            last_update=current_time,
+            active_threats=current_active
+        )
         return self.current_dynamic_route
     
     def _assess_route_risks(
@@ -152,12 +246,12 @@ class DynamicRoutePlanner:
         
         high_risk_assessments = [
             a for a in assessments 
-            if a.risk_level in ['HIGH', 'CRITICAL']
+            if a.cpa_result.risk_level in ['MEDIUM', 'HIGH', 'CRITICAL']
         ]
         
         if high_risk_assessments:
             return {
-                'risk_level': max(a.risk_level for a in high_risk_assessments),
+                'risk_level': max(a.cpa_result.risk_level for a in high_risk_assessments),
                 'targets': [a.target for a in high_risk_assessments]
             }
         
@@ -276,6 +370,124 @@ class DynamicRoutePlanner:
                 ))
         
         return avoidance_points
+
+    def _plan_with_region(self, region: FeasibleRegion, start_latlon: Tuple[float, float], goal_latlon: Tuple[float, float]) -> Optional[List[Tuple[float, float]]]:
+        """使用Hybrid A*在给定可航区域内规划，返回(lat, lon) 轨迹。"""
+        try:
+            # 简化投影：与服务端一致的近似
+            import math
+            lat_avg = (start_latlon[0] + goal_latlon[0]) / 2.0
+            m_per_deg_lat = 111320.0
+            m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg))
+            sx = start_latlon[1] * m_per_deg_lon
+            sy = start_latlon[0] * m_per_deg_lat
+            gx = goal_latlon[1] * m_per_deg_lon
+            gy = goal_latlon[0] * m_per_deg_lat
+            # 采用基线规划器配置（与基线一致），若不可用则回退默认
+            base_planner = self._get_planner_cfg()
+            grid_res = getattr(base_planner, 'grid_resolution', 100.0)
+            motion_step = getattr(base_planner, 'motion_step', 100.0)
+            max_iter = getattr(base_planner, 'max_iterations', 5000)
+            tol_xy = getattr(base_planner, 'goal_tolerance_xy', 100.0)
+            config = PlannerConfig(
+                grid_resolution=float(grid_res),
+                motion_step=float(motion_step),
+                max_iterations=int(max_iter),
+                goal_tolerance_xy=float(tol_xy)
+            )
+            planner = HybridAStar(config, region)
+            route = planner.plan((sx, sy, 0.0), (gx, gy, None), initial_velocity=self.own_vessel_speed * 0.514444)
+            if not route:
+                return None
+            # 直接用与投影一致的反变换返回lat,lon
+            latlon_list: List[Tuple[float, float]] = []
+            for (x, y) in route.waypoints:
+                lat = y / m_per_deg_lat
+                lon = x / m_per_deg_lon
+                latlon_list.append((lat, lon))
+            return latlon_list
+        except Exception:
+            return None
+
+    def _xy_to_latlon_list(self, xy_list: Optional[List[Tuple[float, float]]]) -> List[Tuple[float, float]]:
+        # 已弃用：改为在 _plan_with_region 内进行一致反变换
+        return []
+
+    def _build_ais_mask_union(self, targets: List[AISTarget], current_position: Tuple[float, float]):
+        """构建AIS威胁mask的并集（米坐标系）。"""
+        import math
+        lat0 = current_position[0]
+        m_per_deg_lat = 111320.0
+        m_per_deg_lon = 111320.0 * math.cos(math.radians(lat0))
+        try:
+            scenario = getattr(self.ais_manager, 'get_scenario', lambda: 'default')()
+        except Exception:
+            scenario = 'default'
+        base_scale = 1.0 if scenario != 'aggressive' else 2.0
+        assessments = self.risk_assessor.assess_risks(current_position[0], current_position[1], self.own_vessel_speed, 0.0, targets)
+        risk_by_mmsi = {}
+        for a in assessments:
+            lvl = getattr(a.cpa_result, 'risk_level', 'LOW')
+            w = 0.0
+            if lvl == 'HIGH': w = 1.0
+            elif lvl == 'MEDIUM': w = 0.6
+            elif lvl == 'LOW': w = 0.3
+            risk_by_mmsi[getattr(a.target, 'mmsi', None)] = w
+        buffers = []
+        for t in targets:
+            sog = getattr(t, 'sog', 10.0)
+            risk_w = risk_by_mmsi.get(getattr(t, 'mmsi', None), 0.0)
+            speed_amp = 1.0 + 0.02 * max(0.0, sog - 10.0)
+            risk_amp = 1.0 + 1.0 * risk_w
+            radius_m = max(300.0, min(1500.0, sog * 50.0)) * base_scale * speed_amp * risk_amp
+            x = t.lon * m_per_deg_lon
+            y = t.lat * m_per_deg_lat
+            buffers.append(Point(x, y).buffer(radius_m))
+        return unary_union(buffers) if buffers else None
+
+    def _apply_ais_masks(self, region: FeasibleRegion, targets: List[AISTarget], current_position: Tuple[float, float]):
+        """在可航区域上叠加AIS威胁缓冲形成临时no-go，返回新区域。"""
+        mask = self._build_ais_mask_union(targets, current_position)
+        navigable = region.navigable_area
+        if mask and not mask.is_empty:
+            try:
+                navigable_masked = navigable.difference(mask)
+            except Exception:
+                navigable_masked = navigable
+        else:
+            navigable_masked = navigable
+        return FeasibleRegion(
+            bounds=region.bounds,
+            no_go_areas=region.no_go_areas,
+            navigable_area=navigable_masked if isinstance(navigable_masked, type(region.navigable_area)) else region.navigable_area,
+            depth_contours=region.depth_contours,
+            danger_zones=region.danger_zones,
+            restricted_areas=region.restricted_areas,
+            tss_zones=region.tss_zones
+        ), mask
+
+    def _stitch_replanned_segments(self, baseline_latlon: List[Tuple[float, float]], masked_region: FeasibleRegion, mask_geom, current_lat: float) -> List[Tuple[float, float]]:
+        """对受影响的基准段进行局部重规划并拼接，保留未受影响段的细粒度节点。"""
+        if not baseline_latlon or len(baseline_latlon) < 2:
+            return baseline_latlon
+        import math
+        m_per_deg_lat = 111320.0
+        m_per_deg_lon = 111320.0 * math.cos(math.radians(current_lat))
+        def proj(p):
+            return (p[1] * m_per_deg_lon, p[0] * m_per_deg_lat)
+        stitched: List[Tuple[float, float]] = [baseline_latlon[0]]
+        for i in range(len(baseline_latlon)-1):
+            a = baseline_latlon[i]
+            b = baseline_latlon[i+1]
+            seg = LineString([proj(a), proj(b)])
+            impacted = bool(mask_geom and not mask_geom.is_empty and seg.intersects(mask_geom))
+            if impacted:
+                repl = self._plan_with_region(masked_region, a, b) or [a, b]
+                # 避免重复，拼接时跳过首点
+                stitched.extend(repl[1:])
+            else:
+                stitched.append(b)
+        return stitched
     
     def _calculate_course(self, start_pos: Tuple[float, float], end_pos: Tuple[float, float]) -> float:
         """计算两点间航向"""
@@ -332,13 +544,30 @@ class DynamicRoutePlanner:
         if not self.current_dynamic_route:
             return {}
         
+        def _length_nm(latlon: List[Tuple[float, float]]) -> float:
+            if not latlon or len(latlon) < 2:
+                return 0.0
+            total = 0.0
+            for i in range(len(latlon) - 1):
+                total += self._calculate_distance(latlon[i], latlon[i+1])
+            return total
+
+        original_latlon = self.current_dynamic_route.original_route
+        dynamic_latlon = [(wp.lat, wp.lon) for wp in self.current_dynamic_route.waypoints]
+        original_len_nm = _length_nm(original_latlon)
+        dynamic_len_nm = _length_nm(dynamic_latlon)
+        delta_len_nm = max(0.0, dynamic_len_nm - original_len_nm)
+
         return {
-            'original_route': self.current_dynamic_route.original_route,
-            'dynamic_route': [(wp.lat, wp.lon) for wp in self.current_dynamic_route.waypoints],
+            'original_route': original_latlon,
+            'dynamic_route': dynamic_latlon,
             'avoidance_points': [
                 (wp.lat, wp.lon) for wp in self.current_dynamic_route.waypoints 
                 if wp.is_avoidance_point
             ],
             'active_threats': self.current_dynamic_route.active_threats,
-            'last_update': self.current_dynamic_route.last_update.isoformat()
+            'last_update': self.current_dynamic_route.last_update.isoformat(),
+            'original_distance_nm': original_len_nm,
+            'dynamic_distance_nm': dynamic_len_nm,
+            'delta_distance_nm': delta_len_nm
         }
