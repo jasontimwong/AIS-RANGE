@@ -59,5 +59,9 @@ test.s421
 
 # Large data files (use Git LFS if needed)
 data/enc/ENC_ROOT/
+data/enc/TenDays_ENCs.zip
+data/enc/US5CA12M.000
 data/osm_tiles/
 data/openseamap_tiles/
+data/osm_water/water-polygons-split-3857.zip
+data/osm_water/simplified-water-polygons-3857.zip
