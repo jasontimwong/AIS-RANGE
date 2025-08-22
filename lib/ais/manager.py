@@ -112,8 +112,8 @@ class AISManager:
         return targets_in_range
 
     def set_scenario(self, scenario: str):
-        """设置AIS模拟场景: 'default' 或 'aggressive'"""
-        if scenario not in ("default", "aggressive"):
+        """设置AIS模拟场景: 'default', 'aggressive' 或 'opensea'"""
+        if scenario not in ("default", "aggressive", "opensea"):
             scenario = "default"
         self._scenario = scenario
         # 切换场景时清空旧目标，避免残留影响风险评估

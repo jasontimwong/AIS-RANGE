@@ -71,7 +71,7 @@ export const AdvancedAvoidanceEvaluationPanel: React.FC<Props> = ({ originalRout
   const metrics = React.useMemo(() => {
     if (!params) return null;
     if (!originalRoute || originalRoute.length < 2 || !dynamicRoute || dynamicRoute.length < 2) {
-      setError('路径点不足，无法评估');
+      setError('Insufficient path points for evaluation');
       return null;
     }
     setError(null);
@@ -166,18 +166,18 @@ export const AdvancedAvoidanceEvaluationPanel: React.FC<Props> = ({ originalRout
       minWidth: 300
     }}>
       <div style={{ color: '#81a1c1', fontWeight: 600, marginBottom: 6 }}>
-        ⚙️ 高级避让影响评估（段级）
+        ⚙️ Advanced Avoidance Impact Assessment (Segment-level)
       </div>
       {error && <div style={{ color: '#bf616a', fontSize: 12, marginBottom: 6 }}>{error}</div>}
       <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-        <div>原区段航程: <span style={{ color: '#88c0d0' }}>{(advanced?.original_distance_nm ?? (metrics as any).originalNm).toFixed(2)} nm</span></div>
-        <div>新区段航程: <span style={{ color: '#88c0d0' }}>{(advanced?.dynamic_distance_nm ?? (metrics as any).dynamicNm).toFixed(2)} nm</span></div>
-        <div>Δ航程: <span style={{ color: ((advanced?.delta_distance_nm ?? (metrics as any).deltaNm) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_distance_nm ?? (metrics as any).deltaNm).toFixed(2)} nm</span></div>
-        <div style={{ marginTop: 6 }}>Δ时间: <span style={{ color: ((advanced?.delta_time_hours ?? (metrics as any).deltaHours) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_time_hours ?? (metrics as any).deltaHours).toFixed(2)} 小时</span></div>
-        <div>Δ燃油: <span style={{ color: ((advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon).toFixed(3)} 吨</span></div>
-        <div>Δ成本: <span style={{ color: '#a3be8c' }}>${(advanced?.delta_cost_usd ?? (metrics as any).deltaCostUSD).toFixed(0)}</span></div>
-        <div>ΔCO₂: <span style={{ color: ((advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon) as number) >= 0 ? '#bf616a' : '#a3be8c' }}>{(advanced?.delta_co2_ton ?? (metrics as any).deltaCO2Ton).toFixed(3)} 吨</span></div>
-        <div style={{ marginTop: 6, color: '#5e81ac' }}>区段: [{(metrics as any).segment.startIndex} → {(metrics as any).segment.endIndex}]</div>
+        <div>Original Segment Distance: <span style={{ color: '#88c0d0' }}>{(advanced?.original_distance_nm ?? (metrics as any).originalNm).toFixed(2)} nm</span></div>
+        <div>New Segment Distance: <span style={{ color: '#88c0d0' }}>{(advanced?.dynamic_distance_nm ?? (metrics as any).dynamicNm).toFixed(2)} nm</span></div>
+        <div>ΔDistance: <span style={{ color: ((advanced?.delta_distance_nm ?? (metrics as any).deltaNm) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_distance_nm ?? (metrics as any).deltaNm).toFixed(2)} nm</span></div>
+        <div style={{ marginTop: 6 }}>ΔTime: <span style={{ color: ((advanced?.delta_time_hours ?? (metrics as any).deltaHours) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_time_hours ?? (metrics as any).deltaHours).toFixed(2)} hours</span></div>
+        <div>ΔFuel: <span style={{ color: ((advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon) as number) >= 0 ? '#d08770' : '#a3be8c' }}>{(advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon).toFixed(3)} tons</span></div>
+        <div>ΔCost: <span style={{ color: '#a3be8c' }}>${(advanced?.delta_cost_usd ?? (metrics as any).deltaCostUSD).toFixed(0)}</span></div>
+        <div>ΔCO₂: <span style={{ color: ((advanced?.delta_fuel_ton ?? (metrics as any).deltaFuelTon) as number) >= 0 ? '#bf616a' : '#a3be8c' }}>{(advanced?.delta_co2_ton ?? (metrics as any).deltaCO2Ton).toFixed(3)} tons</span></div>
+        <div style={{ marginTop: 6, color: '#5e81ac' }}>Segment: [{(metrics as any).segment.startIndex} → {(metrics as any).segment.endIndex}]</div>
       </div>
     </div>
   );

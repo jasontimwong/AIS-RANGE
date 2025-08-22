@@ -50,10 +50,10 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
   const TILE_BASE = `${BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL}/tiles`;
   
   const layers = useRef<Record<string, boolean>>({
-    geography: true,  // 真实地理环境图层
-    bathymetry: true, // 水深等深线
-    seamark: true,    // 助航标志
-    localbase: false,  // 改为默认关闭
+    geography: true,  // Real geographic environment layer
+    bathymetry: true, // Water depth contours
+    seamark: true,    // Navigation aids
+    localbase: false,  // Changed to default off
     basemap: false,
     seamarks: false,
     enc: true, 
@@ -63,7 +63,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
   });
   
   const vp = useRef<Viewport>({
-    center: [0.015, 0.0075], // 居中显示示例区域
+    center: [0.015, 0.0075], // Center display example area
     zoom: 12, 
     width: 0, 
     height: 0, 
@@ -79,7 +79,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
   // Simple in-memory tile cache
   const tileCache = useRef<Map<string, HTMLImageElement>>(new Map());
   
-  // GeoJSON地理数据缓存
+  // GeoJSON geographic data cache
   const geoData = useRef<any>(null);
 
   useImperativeHandle(ref, () => ({
@@ -94,7 +94,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       const centerLat = (minLat + maxLat) / 2;
       vp.current.center = [centerLon, centerLat];
       
-      // 计算合适的缩放级别
+      // Calculate appropriate zoom level
       const lonRange = maxLon - minLon;
       const latRange = maxLat - minLat;
       const range = Math.max(lonRange, latRange);
@@ -104,7 +104,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       requestRedraw();
     },
     centerOnRoute: () => {
-      // 定位到航迹中心
+      // Navigate to track center
       if (!props.route || props.route.length === 0) return;
       
       let sumLon = 0, sumLat = 0;
@@ -122,7 +122,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       requestRedraw();
     },
     zoomToFit: () => {
-      // 自动缩放以适应整个航迹
+      // Auto zoom to fit entire track
       if (!props.route || props.route.length === 0) return;
       
       let minLon = Infinity, maxLon = -Infinity;
@@ -135,7 +135,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         maxLat = Math.max(maxLat, lat);
       });
       
-      // 添加15%的边距
+      // Add 15% margin
       const lonMargin = (maxLon - minLon) * 0.15;
       const latMargin = (maxLat - minLat) * 0.15;
       
@@ -144,19 +144,19 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       minLat -= latMargin;
       maxLat += latMargin;
       
-      // 计算中心点
+      // Calculate center point
       vp.current.center = [
         (minLon + maxLon) / 2,
         (minLat + maxLat) / 2
       ];
       
-      // 计算合适的缩放级别（细化）
+      // Calculate appropriate zoom level (refined)
       const lonRange = maxLon - minLon;
       const latRange = maxLat - minLat;
       const maxRange = Math.max(lonRange, latRange);
       
-      // 使用更精确的公式计算缩放级别
-      // zoom = log2(360 / maxRange) 的近似
+      // Use more precise formula to calculate zoom level
+      // zoom = log2(360 / maxRange) approximation
       const targetZoom = Math.floor(8.5 - Math.log2(maxRange));
       vp.current.zoom = Math.max(5, Math.min(18, targetZoom));
       
@@ -171,7 +171,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
   }));
 
   const requestRedraw = () => {
-    // 取消之前的动画帧请求，确保只有最新的请求生效
+    // Cancel previous animation frame request to ensure only the latest request is effective
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
@@ -183,7 +183,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         draw();
         state.current.needsRedraw = false;
         
-        // 性能监控：确保60fps (16.67ms per frame)
+        // Performance monitoring: ensure 60fps (16.67ms per frame)
         const frameTime = performance.now() - startTime;
         if (frameTime > 16.67) {
           console.warn(`Frame time: ${frameTime.toFixed(2)}ms (target: <16.67ms for 60fps)`);
@@ -192,11 +192,11 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     });
   };
 
-  // 加载地理数据
+  // Load geographic data
   useEffect(() => {
     const loadGeoData = async () => {
       try {
-        // 优先加载真实的亚太地区Natural Earth数据
+        // Prioritize loading real Asia-Pacific Natural Earth data
         const asiaPacificResponse = await fetch(`${BASE_URL}geo/asia-pacific-land.json`);
         if (asiaPacificResponse.ok) {
           geoData.current = await asiaPacificResponse.json();
@@ -207,7 +207,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         console.warn('Failed to load Asia-Pacific Natural Earth data:', error);
       }
       
-      // 加载水深数据
+      // Load water depth data
       try {
         const bathymetryResponse = await fetch(`${BASE_URL}geo/asia-pacific-bathymetry.json`);
         if (bathymetryResponse.ok) {
@@ -219,7 +219,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         console.warn('Failed to load bathymetry data:', error);
       }
       
-      // 加载助航标志数据
+      // Load navigation aids data
       try {
         const seamarksResponse = await fetch(`${BASE_URL}geo/asia-pacific-seamarks.json`);
         if (seamarksResponse.ok) {
@@ -232,7 +232,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
       
       try {
-        // 备用：加载简化的世界地图数据
+        // Fallback: Load simplified world map data
         const worldResponse = await fetch(`${BASE_URL}geo/world-land-simplified.json`);
         if (worldResponse.ok) {
           geoData.current = await worldResponse.json();
@@ -244,7 +244,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         console.warn('Failed to load world geographic data:', error);
       }
       
-      // 最后的备用
+      // Final fallback
       try {
         const response = await fetch(`${BASE_URL}geo/world-simplified.json`);
         if (response.ok) {
@@ -276,7 +276,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     const ro = new ResizeObserver(resize);
     ro.observe(cvs);
 
-    // 鼠标滚轮缩放
+    // Mouse wheel zoom
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.5 : 0.5;
@@ -286,7 +286,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       if (props.onViewChange) props.onViewChange(vp.current.center, vp.current.zoom);
     };
 
-    // 鼠标拖拽
+    // Mouse drag
     const onDown = (e: MouseEvent) => {
       state.current.drag = true;
       state.current.last = [e.clientX, e.clientY];
@@ -307,7 +307,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       state.current.needsRedraw = true;
       requestRedraw();
       
-      // 通知父组件视图变化（实时同步AIS图层）
+      // Notify parent component of view changes (real-time sync AIS layer)
       if (props.onViewChange) {
         props.onViewChange(vp.current.center, vp.current.zoom);
       }
@@ -318,9 +318,9 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       cvs.style.cursor = 'grab';
     };
 
-    // 键盘导航支持
+    // Keyboard navigation support
     const onKeyDown = (e: KeyboardEvent) => {
-      const step = 0.001; // 键盘平移步长
+      const step = 0.001; // Keyboard pan step
       let moved = false;
       
       switch (e.key) {
@@ -360,23 +360,23 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       if (moved) {
         state.current.needsRedraw = true;
         requestRedraw();
-        // 通知父组件视图变化
+        // Notify parent component of view changes
         if (props.onViewChange) props.onViewChange(vp.current.center, vp.current.zoom);
       }
     };
 
-    // 触摸手势支持（基础版）
+    // Touch gesture support (basic)
     let touchStart: { x: number; y: number; dist?: number } | null = null;
     
     const onTouchStart = (e: TouchEvent) => {
       e.preventDefault();
       if (e.touches.length === 1) {
-        // 单指拖拽
+        // Single finger drag
         const touch = e.touches[0];
         touchStart = { x: touch.clientX, y: touch.clientY };
         state.current.drag = true;
       } else if (e.touches.length === 2) {
-        // 双指缩放
+        // Two-finger zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -393,7 +393,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       if (!touchStart) return;
       
       if (e.touches.length === 1 && state.current.drag) {
-        // 单指拖拽
+        // Single finger drag
         const touch = e.touches[0];
         const dx = (touch.clientX - touchStart.x) / vp.current.dpr;
         const dy = (touch.clientY - touchStart.y) / vp.current.dpr;
@@ -406,18 +406,18 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         state.current.needsRedraw = true;
         requestRedraw();
         
-        // 通知父组件视图变化（实时同步AIS图层）
+        // Notify parent component of view changes (real-time sync AIS layer)
         if (props.onViewChange) {
           props.onViewChange(vp.current.center, vp.current.zoom);
         }
       } else if (e.touches.length === 2 && touchStart.dist) {
-        // 双指缩放
+        // Two-finger zoom
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const scaleFactor = dist / touchStart.dist;
         
-        if (Math.abs(scaleFactor - 1) > 0.1) { // 防抖
+        if (Math.abs(scaleFactor - 1) > 0.1) { // Debounce
           const zoomDelta = Math.log2(scaleFactor);
           vp.current.zoom = Math.max(2, Math.min(20, vp.current.zoom + zoomDelta));
           touchStart.dist = dist;
@@ -443,7 +443,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     window.addEventListener("keydown", onKeyDown);
     
     cvs.style.cursor = 'grab';
-    cvs.tabIndex = 0; // 使画布可聚焦以接收键盘事件
+    cvs.tabIndex = 0; // Make canvas focusable to receive keyboard events
 
     return () => {
       ro.disconnect();
@@ -466,7 +466,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     requestRedraw();
   }, [props.enc, props.route]);
 
-  // 绘制水深等深线
+  // Draw water depth contours
   function drawBathymetry(
     ctx: CanvasRenderingContext2D,
     width: number,
@@ -479,7 +479,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     const colors = ECDIS_PALETTE[colorScheme];
     const safetySettings = DEFAULT_SAFETY_SETTINGS;
     
-    // 定义投影函数
+    // Define projection function
     const project = (coord: LonLat): [number, number] => {
       const { x, y } = lonLatToXY(coord[0], coord[1], center[0], center[1], zoom, width, height);
       return [x, y];
@@ -491,25 +491,25 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       const depth = feature.properties.depth;
       const coords = feature.geometry.coordinates;
       
-      // 根据深度设置颜色
+      // Set color based on depth
       if (depth === safetySettings.safetyContour) {
-        // 安全等深线 - 加粗高亮
+        // Safety contour - bold highlight
         ctx.strokeStyle = colorScheme === 'NIGHT' ? colors.CHRED : colors.CHBLK;
         ctx.lineWidth = 2;
         ctx.setLineDash([]);
       } else if (depth < safetySettings.safetyContour) {
-        // 浅于安全等深线 - 警告色
+        // Shallower than safety contour - warning color
         ctx.strokeStyle = colors.DEPSH;
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 3]);
       } else {
-        // 深于安全等深线 - 普通显示
+        // Deeper than safety contour - normal display
         ctx.strokeStyle = colors.CHGRD;
         ctx.lineWidth = 0.5;
         ctx.setLineDash([2, 4]);
       }
       
-      // 绘制等深线
+      // Draw contour lines
       if (feature.geometry.type === 'MultiLineString') {
         coords.forEach((lineString: number[][]) => {
           ctx.beginPath();
@@ -527,7 +527,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     ctx.restore();
   }
   
-  // 绘制助航标志
+  // Draw navigation aids
   function drawSeamarks(
     ctx: CanvasRenderingContext2D,
     width: number,
@@ -539,7 +539,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     
     const colors = ECDIS_PALETTE[colorScheme];
     
-    // 定义投影函数
+    // Define projection function
     const project = (coord: LonLat): [number, number] => {
       const { x, y } = lonLatToXY(coord[0], coord[1], center[0], center[1], zoom, width, height);
       return [x, y];
@@ -547,18 +547,18 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     
     ctx.save();
     
-    // 绘制灯塔
+    // Draw lighthouses
     if (seamarksData.current.lights) {
       seamarksData.current.lights.forEach((light: any) => {
         const [x, y] = project(light.coords);
         if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
-          // 灯塔符号 - 星形
+          // Lighthouse symbol - star shape
           ctx.fillStyle = colors.LIGHTS;
           ctx.strokeStyle = colors.CHBLK;
           ctx.lineWidth = 1;
           drawStar(ctx, x, y, zoom > 10 ? 8 : 6, zoom > 10 ? 4 : 3);
           
-          // 标注名称（高缩放级别）
+          // Label name (high zoom level)
           if (zoom > 12 && light.name) {
             ctx.fillStyle = colors.CHBLK;
             ctx.font = '10px monospace';
@@ -568,14 +568,14 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       });
     }
     
-    // 绘制浮标
+    // Draw buoys
     if (seamarksData.current.buoys) {
       seamarksData.current.buoys.forEach((buoy: any) => {
         const [x, y] = project(buoy.coords);
         if (x >= -20 && x <= width + 20 && y >= -20 && y <= height + 20) {
           ctx.strokeStyle = colors.CHBLK;
           ctx.lineWidth = 1;
-          // 根据类型绘制不同形状
+          // Draw different shapes based on type
           if (buoy.category === 'port' || buoy.color === 'red') {
             ctx.fillStyle = colors.BUOYAR;
             drawDiamond(ctx, x, y, zoom > 10 ? 6 : 4);
@@ -590,7 +590,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       });
     }
     
-    // 绘制危险物
+    // Draw hazards
     if (seamarksData.current.dangers) {
       seamarksData.current.dangers.forEach((danger: any) => {
         const [x, y] = project(danger.coords);
@@ -610,7 +610,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     ctx.restore();
   }
   
-  // 符号绘制辅助函数
+  // Symbol drawing helper functions
   function drawStar(ctx: CanvasRenderingContext2D, x: number, y: number, r1: number, r2: number) {
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {
@@ -682,50 +682,50 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
     const ctx = cvs.getContext("2d")!;
     const { width, height, dpr, zoom, center } = vp.current;
 
-    // 设置高DPI渲染
+    // Set high DPI rendering
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    // 深色海洋背景
+    // Dark ocean background
     ctx.fillStyle = "#06141d";
     ctx.fillRect(0, 0, width, height);
 
-    // 真实地理环境图层（优先显示）
+    // Real geographic environment layer (priority display)
     if (layers.current.geography && geoData.current) {
       drawGeography(ctx, width, height, center, zoom);
     }
     
-    // 水深等深线（ECDIS图层）
+    // Water depth contours (ECDIS layer)
     if (layers.current.bathymetry && bathymetryData.current) {
       drawBathymetry(ctx, width, height, center, zoom);
     }
 
-    // 本地离线简易海图（网格+纹理）
+    // Local offline simple nautical chart (grid + texture)
     if (layers.current.localbase) {
       drawLocalBasemap(ctx, width, height, center, zoom);
     }
 
-    // 绘制海图瓦片（禁用有问题的OSM瓦片，改用增强的本地渲染）
+    // Draw nautical chart tiles (disable problematic OSM tiles, use enhanced local rendering)
     if (layers.current.basemap) {
-      // OSM瓦片存在访问问题，改用增强的本地海图渲染
+      // OSM tiles have access issues, use enhanced local nautical chart rendering
       drawEnhancedLocalBasemap(ctx, width, height, center, zoom);
     }
     if (layers.current.seamarks) {
-      // OpenSeaMap瓦片可能也有同样问题，暂时禁用
+      // OpenSeaMap tiles may have same issues, temporarily disabled
       // drawTilesLayer(ctx, width, height, center, zoom, `${TILE_BASE}/openseamap`);
       drawLocalSeamarks(ctx, width, height, center, zoom);
     }
 
-    // 视窗裁剪优化：计算当前可见的地理边界
+    // Viewport clipping optimization: calculate currently visible geographic boundaries
     const viewBounds = getVisibleBounds();
     
-    // 启用视窗裁剪以提升性能
+    // Enable viewport clipping to improve performance
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, width, height);
     ctx.clip();
 
-    // ENC-lite 海岸线（使用视窗裁剪优化）
+    // ENC-lite coastline (using viewport clipping optimization)
     if (layers.current.enc && props.enc?.coast) {
       ctx.fillStyle = "#1e2936";
       ctx.strokeStyle = "#2d3748";
@@ -737,7 +737,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         }
       }
       
-      // 浅水区域（安全等深线着色）
+      // Shallow water area (safety contour coloring)
       if (props.enc.shallow) {
         ctx.globalAlpha = 0.4;
         ctx.fillStyle = "#1a365d";
@@ -751,7 +751,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         ctx.globalAlpha = 1;
       }
 
-      // 等深线（depth contours）
+      // Depth contour lines
       if (props.enc.depths) {
         ctx.strokeStyle = "#4a90e2";
         ctx.lineWidth = 1;
@@ -766,9 +766,9 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
     }
 
-    // TSS 分道通航制（视窗裁剪优化）
+    // TSS Traffic Separation Scheme (viewport clipping optimization)
     if (layers.current.tss && props.enc?.tss) {
-      // 航行车道
+      // Navigation lanes
       if (props.enc.tss.lanes?.length > 0) {
         ctx.fillStyle = "rgba(255, 214, 10, 0.25)";
         ctx.strokeStyle = "rgba(255, 214, 10, 0.6)";
@@ -781,7 +781,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         }
       }
       
-      // 分隔带
+      // Separation zones
       if (props.enc.tss.sep_zones?.length > 0) {
         ctx.fillStyle = "rgba(255, 99, 71, 0.3)";
         ctx.strokeStyle = "rgba(255, 99, 71, 0.8)";
@@ -795,9 +795,9 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
     }
 
-    // S-124 警告区域（视窗裁剪优化）
+    // S-124 Warning areas (viewport clipping optimization)
     if (layers.current.s124 && props.enc?.s124) {
-      // 限速区
+      // Speed limit areas
       if (props.enc.s124.speed_limits?.length > 0) {
         ctx.fillStyle = "rgba(0, 153, 255, 0.2)";
         ctx.strokeStyle = "rgba(0, 153, 255, 0.6)";
@@ -812,7 +812,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         ctx.setLineDash([]);
       }
       
-      // 禁航区
+      // No-navigation zones
       if (props.enc.s124.prohibited?.length > 0) {
         ctx.fillStyle = "rgba(255, 0, 0, 0.25)";
         ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
@@ -828,7 +828,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
     }
 
-    // 助航设备（Aids to Navigation）
+    // Aids to Navigation
     if (layers.current.enc && props.enc?.aids) {
       for (const aid of props.enc.aids) {
         const [x, y] = project([aid.lon, aid.lat]);
@@ -842,6 +842,15 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
 
     // 规划航线（支持动态路径的双路径可视化）
     if (layers.current.route && props.route?.length > 1) {
+      // 调试路径数据
+      console.log('路径渲染调试:', {
+        routeLength: props.route.length,
+        firstPoint: props.route[0],
+        lastPoint: props.route[props.route.length - 1],
+        samplePoints: props.route.slice(0, 3),
+        viewport: { center, zoom, width, height }
+      });
+      
       const isDynamicMode = Boolean(
         props.dynamicRouteEnabled && Array.isArray(props.dynamicRoute) && props.dynamicRoute.length > 1
       );
@@ -857,30 +866,26 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       }
       
       if (!isDynamicMode) {
-        // 标准模式：显示XTD走廊
-        ctx.strokeStyle = "rgba(163, 190, 140, 0.3)";
+        // 标准模式：显示XTD走廊（对长航线/低缩放降采样，避免“毛刷带”效果）
+        const maxCorridorSegments = zoom >= 9 ? 1500 : zoom >= 7 ? 600 : 200;
+        const corridorStride = Math.max(1, Math.floor((props.route.length - 1) / maxCorridorSegments));
+        ctx.strokeStyle = "rgba(163, 190, 140, 0.35)";
         ctx.lineWidth = 1;
-        ctx.setLineDash([5, 3]);
-        
-        for (let i = 0; i < props.route.length - 1; i++) {
+        ctx.setLineDash([6, 4]);
+        for (let i = 0; i < props.route.length - 1; i += corridorStride) {
           const [x1, y1] = project(props.route[i]);
           const [x2, y2] = project(props.route[i + 1]);
-          
-          // 计算垂直于航线的XTD走廊边界
           const dx = x2 - x1;
           const dy = y2 - y1;
           const len = Math.hypot(dx, dy);
-          if (len > 0) {
-            const xtdWidth = 20; // 像素宽度，实际应根据XTD值计算
+          if (len > 1) {
+            const xtdWidth = 20;
             const perpX = (-dy / len) * xtdWidth;
             const perpY = (dx / len) * xtdWidth;
-            
-            // 绘制走廊边界
             ctx.beginPath();
             ctx.moveTo(x1 + perpX, y1 + perpY);
             ctx.lineTo(x2 + perpX, y2 + perpY);
             ctx.stroke();
-            
             ctx.beginPath();
             ctx.moveTo(x1 - perpX, y1 - perpY);
             ctx.lineTo(x2 - perpX, y2 - perpY);
@@ -890,27 +895,19 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         ctx.setLineDash([]);
       }
 
-      // 原始航线
-      if (isDynamicMode) {
-        // 动态模式：原路径显示为蓝色虚线（弱化显示）
-        ctx.strokeStyle = "rgba(136, 192, 208, 0.8)";
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([8, 6]);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      } else {
-        // 标准模式：原路径显示为绿色实线
-        ctx.strokeStyle = "#a3be8c";
-        ctx.lineWidth = 4;
-        ctx.setLineDash([]);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      }
+      // 原始航线（始终为清晰的实线，动态模式下改用半透明绿色以避免与动态红线冲突）
+      ctx.strokeStyle = isDynamicMode ? "rgba(163, 190, 140, 0.8)" : "#a3be8c";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([]);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       
       ctx.beginPath();
       let first = true;
+      let projectedPoints = [];
       for (const p of props.route) {
         const [x, y] = project(p);
+        projectedPoints.push([x, y]);
         if (first) {
           ctx.moveTo(x, y);
           first = false;
@@ -918,6 +915,16 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
           ctx.lineTo(x, y);
         }
       }
+      
+      // 调试投影后的点
+      if (projectedPoints.length > 0) {
+        console.log('投影后的路径点:', {
+          first: projectedPoints[0],
+          last: projectedPoints[projectedPoints.length - 1],
+          sample: projectedPoints.slice(0, 3)
+        });
+      }
+      
       ctx.stroke();
       ctx.setLineDash([]); // 重置虚线
 
@@ -951,7 +958,7 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
           return [x, y];
         });
 
-        // 动态路径：高亮红色+发光边
+        // 动态路径：高亮红色+发光边（确保位于原路径之上，先绘制原路径）
         ctx.strokeStyle = "#ff4d4f";
         ctx.lineWidth = 6;
         ctx.setLineDash([]);
@@ -1019,21 +1026,23 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         if (validCount < 2) arrowPath(dynScreen);
       }
 
-      // 原始航线方向箭头
+      // 原始航线方向箭头（按像素距离稀疏采样，避免密集“斜线纹理”）
       ctx.strokeStyle = isDynamicMode ? "rgba(94, 129, 172, 0.7)" : "#5e81ac";
       ctx.lineWidth = 2;
+      const arrowMinPix = zoom >= 10 ? 100 : zoom >= 8 ? 180 : 260;
+      let accPix = 0;
       for (let i = 0; i < props.route.length - 1; i++) {
         const [x1, y1] = project(props.route[i]);
         const [x2, y2] = project(props.route[i + 1]);
-        
+        const seg = Math.hypot(x2 - x1, y2 - y1);
+        accPix += seg;
+        if (accPix < arrowMinPix) continue;
+        accPix = 0;
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
-        
-        // 计算航向箭头
         const angle = Math.atan2(y2 - y1, x2 - x1);
         const arrowLen = 8;
         const arrowAngle = Math.PI / 6;
-        
         ctx.beginPath();
         ctx.moveTo(midX, midY);
         ctx.lineTo(
@@ -1074,8 +1083,11 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
         });
       }
 
-      // 航路点（增强版）
+      // 航路点（增强版，长航线仅绘制首尾与稀疏点）
+      const maxMarkers = zoom >= 10 ? 200 : zoom >= 8 ? 80 : 20;
+      const strideMarkers = Math.max(1, Math.floor(props.route.length / maxMarkers));
       props.route.forEach((p, i) => {
+        if (i % strideMarkers !== 0 && i !== 0 && i !== props.route.length - 1) return;
         const [x, y] = project(p);
         const isStart = i === 0;
         const isEnd = i === props.route.length - 1;
@@ -1126,13 +1138,16 @@ export const CanvasMap = React.forwardRef<MapRef, Props>((props, ref) => {
       });
 
       // 航段距离和方位信息
-      if (zoom >= 8) {
+      if (zoom >= 9) {
         ctx.fillStyle = "#81a1c1";
         ctx.font = "10px monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
-        for (let i = 0; i < props.route.length - 1; i++) {
+        // 距离标注稀疏采样
+        const maxLabels = 120;
+        const strideLabels = Math.max(1, Math.floor((props.route.length - 1) / maxLabels));
+        for (let i = 0; i < props.route.length - 1; i += strideLabels) {
           const [x1, y1] = project(props.route[i]);
           const [x2, y2] = project(props.route[i + 1]);
           

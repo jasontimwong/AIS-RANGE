@@ -10,18 +10,18 @@ export default defineConfig({
   server: {
     port: 3001,
     proxy: {
-      '/plan': 'http://localhost:8001',
-      '/validate': 'http://localhost:8001',
-      '/export': 'http://localhost:8001',
-      '/import': 'http://localhost:8001',
-      '/enc': 'http://localhost:8001',
-      '/status': 'http://localhost:8001',
-      '/api/route': 'http://localhost:8001',
-      '/api/eval': 'http://localhost:8001',
-      '/api/ais': 'http://localhost:8001',
-      '/api/test': 'http://localhost:8001',
+      '/plan': 'http://localhost:8000',
+      '/validate': 'http://localhost:8000',
+      '/export': 'http://localhost:8000',
+      '/import': 'http://localhost:8000',
+      '/enc': 'http://localhost:8000',
+      '/status': 'http://localhost:8000',
+      '/api/route': 'http://localhost:8000',
+      '/api/eval': 'http://localhost:8000',
+      '/api/ais': 'http://localhost:8000',
+      '/api/test': 'http://localhost:8000',
       '/ws': {
-        target: 'http://localhost:8001',
+        target: 'http://localhost:8000',
         ws: true,
         changeOrigin: true
       }

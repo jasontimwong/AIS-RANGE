@@ -194,7 +194,7 @@ export function ECDISControls({ onColorSchemeChange }: { onColorSchemeChange: (s
       borderRadius: '5px',
       boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
     }}>
-      <h4 style={{ margin: '0 0 10px 0' }}>ECDIS显示模式</h4>
+      <h4 style={{ margin: '0 0 10px 0' }}>ECDIS Display Mode</h4>
       
       <div style={{ marginBottom: '10px' }}>
         <label>
@@ -205,7 +205,7 @@ export function ECDISControls({ onColorSchemeChange }: { onColorSchemeChange: (s
             defaultChecked
             onChange={(e) => onColorSchemeChange(e.target.value as ColorScheme)}
           />
-          <span style={{ marginLeft: '5px' }}>☀️ 日间模式</span>
+          <span style={{ marginLeft: '5px' }}>☀️ Day Mode</span>
         </label>
       </div>
       
@@ -217,7 +217,7 @@ export function ECDISControls({ onColorSchemeChange }: { onColorSchemeChange: (s
             value="DUSK"
             onChange={(e) => onColorSchemeChange(e.target.value as ColorScheme)}
           />
-          <span style={{ marginLeft: '5px' }}>🌅 黄昏模式</span>
+          <span style={{ marginLeft: '5px' }}>🌅 Dusk Mode</span>
         </label>
       </div>
       
@@ -229,18 +229,18 @@ export function ECDISControls({ onColorSchemeChange }: { onColorSchemeChange: (s
             value="NIGHT"
             onChange={(e) => onColorSchemeChange(e.target.value as ColorScheme)}
           />
-          <span style={{ marginLeft: '5px' }}>🌙 夜间模式</span>
+          <span style={{ marginLeft: '5px' }}>🌙 Night Mode</span>
         </label>
       </div>
       
       <hr style={{ margin: '10px 0' }} />
       
-      <h4 style={{ margin: '10px 0' }}>安全设置</h4>
+      <h4 style={{ margin: '10px 0' }}>Safety Settings</h4>
       
       <div style={{ fontSize: '12px' }}>
-        <div>安全水深: 10m</div>
-        <div>安全等深线: 10m</div>
-        <div style={{ color: '#ff0000' }}>⚠️ 浅水警告: &lt;5m</div>
+        <div>Safety Depth: 10m</div>
+        <div>Safety Contour: 10m</div>
+        <div style={{ color: '#ff0000' }}>⚠️ Shallow Water Warning: &lt;5m</div>
       </div>
     </div>
   );

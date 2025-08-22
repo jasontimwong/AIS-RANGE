@@ -24,19 +24,19 @@ export function App() {
   const [aisScenario, setAisScenario] = useState<'default' | 'aggressive'>('default');
   const [dynamicRouteEnabled, setDynamicRouteEnabled] = useState(false);
   const [mapState, setMapState] = useState({ center: [121.508, 31.23] as LonLat, zoom: 8 });
-  const [shipPosition, setShipPosition] = useState<LonLat>([121.508, 31.23]); // Ship actual position
+  const [shipPosition, setShipPosition] = useState<LonLat>([121.508, 31.23]); // Actual ship position
   const [dynamicRoute, setDynamicRoute] = useState<LonLat[]>([]);
   const [routeComparison, setRouteComparison] = useState<any>(null);
-  // Manual replanning result temporary override window (prevent being overwritten by 5-second polling)
+  // Manual replan result temporary override window (prevent being overridden by 5-second polling)
   const manualOverrideUntilRef = useRef<number>(0);
   
   const { targets, connected } = useAISData(aisEnabled);
 
-  // Subscribe to RouteService route updates
+  // Subscribe to RouteService path updates
   useEffect(() => {
     const unsubscribe = routeService.subscribe((newRoute) => {
-      console.log('RouteService route updated:', newRoute.length, 'points');
-      // Only update when route actually changes
+      console.log('RouteService path update:', newRoute.length, 'points');
+      // Only update when path actually changes
       const updated = setRoute(prevRoute => {
         // Avoid unnecessary updates
         if (prevRoute.length === newRoute.length && 
@@ -47,7 +47,7 @@ export function App() {
         }
         return newRoute;
       });
-      // Auto-fit view after route update (avoid interrupting user manual interaction)
+      // Auto-fit view after path update (avoid interrupting user manual interaction)
       try {
         const now = Date.now();
         const recentUserChange = now - lastUserViewChangeAt.current < 1500;
@@ -77,7 +77,7 @@ export function App() {
         if (savedRoute && savedRoute.length > 0) {
           console.log('Loading saved route:', savedRoute.length, 'points');
           setRoute(savedRoute);
-          // Set ship initial position to route start
+          // Set initial ship position to route start
           if (savedRoute.length > 0) {
             setShipPosition(savedRoute[0]);
           }
@@ -85,21 +85,21 @@ export function App() {
           // If no saved route, set default route (Shanghai-Singapore)
           const defaultRoute: LonLat[] = [
             [121.508, 31.23],   // Shanghai Port
-            [122.0, 31.0],      // Exit Yangtze River Estuary
+            [122.0, 31.0],      // Yangtze River Estuary
             [122.5, 30.5],      // East China Sea
-            [123.0, 29.5],      // Continue south
-            [122.8, 28.0],      // East of Zhejiang waters
-            [122.0, 26.5],      // East of Fujian waters  
+            [123.0, 29.5],      // Continue South
+            [122.8, 28.0],      // East of Zhejiang
+            [122.0, 26.5],      // East of Fujian
             [121.0, 25.0],      // North Taiwan Strait
             [119.5, 23.5],      // Central Taiwan Strait
             [118.0, 22.0],      // South Taiwan Strait
             [116.5, 20.5],      // North South China Sea
             [114.5, 18.0],      // Central South China Sea
-            [112.0, 15.0],      // South Central South China Sea
-            [110.0, 12.0],      // Continue south
+            [112.0, 15.0],      // South-Central South China Sea
+            [110.0, 12.0],      // Continue South
             [108.0, 9.0],       // Approaching Malay Peninsula
-            [106.0, 6.0],       // East coast of Malay Peninsula
-            [104.5, 3.5],       // North entrance of Malacca Strait
+            [106.0, 6.0],       // East Coast of Malay Peninsula
+            [104.5, 3.5],       // North Entrance of Malacca Strait
             [103.9, 2.0],       // Malacca Strait
             [103.85, 1.27]      // Singapore Port
           ];
@@ -121,21 +121,21 @@ export function App() {
         // Set default Shanghai-Singapore route
         const defaultRouteData: LonLat[] = [
           [121.508, 31.23],   // Shanghai Port
-          [122.0, 31.0],      // Yangtze River Exit
+          [122.0, 31.0],      // Yangtze River Estuary
           [122.5, 30.5],      // East China Sea
-          [123.0, 29.5],      // Continue southward
-          [122.8, 28.0],      // Eastern waters of Zhejiang
-          [122.0, 26.5],      // Eastern waters of Fujian
-          [121.0, 25.0],      // Northern Taiwan Strait
+          [123.0, 29.5],      // Continue South
+          [122.8, 28.0],      // East of Zhejiang
+          [122.0, 26.5],      // East of Fujian
+          [121.0, 25.0],      // North Taiwan Strait
           [119.5, 23.5],      // Central Taiwan Strait
-          [118.0, 22.0],      // Southern Taiwan Strait
-          [116.5, 20.5],      // Northern South China Sea
+          [118.0, 22.0],      // South Taiwan Strait
+          [116.5, 20.5],      // North South China Sea
           [114.5, 18.0],      // Central South China Sea
-          [112.0, 15.0],      // South-central South China Sea
-          [110.0, 12.0],      // Continue southward
+          [112.0, 15.0],      // South-Central South China Sea
+          [110.0, 12.0],      // Continue South
           [108.0, 9.0],       // Approaching Malay Peninsula
-          [106.0, 6.0],       // East coast of Malay Peninsula
-          [104.5, 3.5],       // Northern entrance of Malacca Strait
+          [106.0, 6.0],       // East Coast of Malay Peninsula
+          [104.5, 3.5],       // North Entrance of Malacca Strait
           [103.9, 2.0],       // Malacca Strait
           [103.85, 1.27]      // Singapore Port
         ];
@@ -227,19 +227,19 @@ export function App() {
     return () => clearInterval(updateInterval);
   }, [dynamicRouteEnabled, route, aisEnabled, shipPosition]);  // Add shipPosition dependency
 
-  // Get dynamic route data
+  // Fetch dynamic route data
   const fetchDynamicRoute = async () => {
     try {
-      // If within manual override window, skip auto-polling update to avoid overwriting "Replan (Global)" result
+      // Skip auto-polling update if within manual override window to avoid overriding "Replan (Global)" results
       if (Date.now() < manualOverrideUntilRef.current) {
         return;
       }
-      // Use ship actual position instead of map center
-      console.log('Getting dynamic route, ship position:', shipPosition);
+      // Use actual ship position instead of map center
+      console.log('Fetching dynamic route, ship position:', shipPosition);
       const response = await fetch(`/api/route/dynamic?current_lat=${shipPosition[1]}&current_lon=${shipPosition[0]}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Got dynamic route data:', data);
+        console.log('Retrieved dynamic route data:', data);
           if (data.route_comparison) {
           setRouteComparison(data.route_comparison);
           const dynamicWaypoints = data.route_comparison.dynamic_route || [];
@@ -253,7 +253,7 @@ export function App() {
             setEnc((prev: any) => ({ ...(prev || {}), __avoidance_points: avoidance }));
           console.log('Dynamic route set, points:', convertedRoute.length);
 
-          // View auto-fit: Only trigger when first dynamic route ready and user hasn't interacted recently
+          // View auto-fit: Only trigger on first dynamic route ready and no recent user interaction
           try {
             const now = Date.now();
             const recentUserChange = now - lastUserViewChangeAt.current < 2000;
@@ -279,10 +279,10 @@ export function App() {
           }
         }
       } else {
-        console.error('Failed to get dynamic route, status:', response.status);
+        console.error('Failed to fetch dynamic route, status code:', response.status);
       }
     } catch (error) {
-      console.error('Failed to get dynamic route:', error);
+      console.error('Failed to fetch dynamic route:', error);
     }
   };
 
@@ -297,7 +297,7 @@ export function App() {
       if (!res.ok) throw new Error(`Failed to switch AIS scenario: ${res.status}`);
       setAisScenario(scenario);
 
-      // If dynamic route enabled, reinitialize to immediately reflect changes
+      // If dynamic route is enabled, reinitialize to immediately reflect differences
       if (dynamicRouteEnabled && route && route.length > 0) {
         const waypoints = route.map(([lon, lat]) => ({ lat, lon }));
         await fetch('/api/route/initialize', {
@@ -316,7 +316,7 @@ export function App() {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return; // Ignore keypresses in input fields
+        return; // Ignore key presses in input fields
       }
       
       switch(e.key.toLowerCase()) {
@@ -335,7 +335,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  // RTZ export handling
+  // RTZ export handler
   const handleExportRTZ = async () => {
     try {
       const blob = await exportRTZ("current_route");
@@ -352,7 +352,7 @@ export function App() {
     }
   };
 
-  // RTZ import handling
+  // RTZ import handler
   const handleImportRTZ = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -373,7 +373,7 @@ export function App() {
         if (importedRoute.length > 0) {
           setShipPosition(importedRoute[0]);
         }
-        setReport(null); // Clear report temporarily after RTZ import
+        setReport(null); // Temporarily clear report after RTZ import
       }
       setError(null);
       
@@ -451,8 +451,8 @@ export function App() {
             fontSize: "12px", 
             color: "#5e81ac" 
           }}>
-            {colorScheme === 'NIGHT' && "Red-based to protect night vision"}
-            {colorScheme === 'DUSK' && "Low contrast to reduce glare"}
+            {colorScheme === 'NIGHT' && "Red tones preserve night vision"}
+            {colorScheme === 'DUSK' && "Low contrast reduces glare"}
             {colorScheme === 'DAY' && "High contrast for daylight readability"}
           </div>
         </div>
@@ -469,7 +469,7 @@ export function App() {
                   onChange={e => mapRef.current?.toggle("geography", e.target.checked)}
                   style={{ marginRight: "8px" }}
                 /> 
-                🌍 Real Geography (Asia-Pacific Coastlines)
+                🌍 Real Geography (Asia-Pacific Coastline)
               </label>
             </li>
             <li style={{ margin: "4px 0" }}>
@@ -501,7 +501,7 @@ export function App() {
                   onChange={e => mapRef.current?.toggle("localbase", e.target.checked)}
                   style={{ marginRight: "8px" }}
                 /> 
-                Local Offline Basemap (Texture + Grid)
+                Local Offline Basemap (Procedural Texture + Grid)
               </label>
             </li>
             <li style={{ margin: "4px 0" }}>
@@ -521,7 +521,7 @@ export function App() {
                   onChange={e => mapRef.current?.toggle("seamarks", e.target.checked)}
                   style={{ marginRight: "8px" }}
                 /> 
-                Navigation Mark System (Buoys + Lighthouses + Beacons)
+                Navigation System (Buoys + Lighthouses + Beacons)
               </label>
             </li>
             <li style={{ margin: "4px 0" }}>
@@ -606,7 +606,7 @@ export function App() {
               }}
             >
               <option value="default">Default (Normal Environment)</option>
-              <option value="aggressive">Strong Attack (High Risk Barrier)</option>
+              <option value="aggressive">Aggressive (High-Risk Barrier)</option>
             </select>
           </div>
         </div>
@@ -616,7 +616,7 @@ export function App() {
           <RoutePlanner
             onRouteSelect={(newRoute) => {
               console.log('User planned new route:', newRoute.length, 'points');
-              // Use RouteService to save user planned route (will trigger subscription update)
+              // Save user-planned route using RouteService (will trigger subscription update)
               routeService.setPlannedRoute(newRoute);
               // Set ship position to new route start
               if (newRoute.length > 0) {
@@ -625,7 +625,7 @@ export function App() {
               setDynamicRoute([]);  // Clear dynamic route
               setDynamicRouteEnabled(false);  // Disable dynamic planning first
               
-              // Delay enabling dynamic planning to show route first
+              // Delay enabling dynamic planning to let route display first
               setTimeout(() => {
                 setDynamicRouteEnabled(true);
                 mapRef.current?.zoomToFit();
@@ -635,7 +635,7 @@ export function App() {
               console.log('Starting route planning...');
             }}
             onPlanningComplete={(route, time) => {
-              console.log(`Route planning complete, ${route.length} points, took ${time} seconds`);
+              console.log(`Route planning complete, ${route.length} points, took ${time}s`);
               setError(null);
             }}
             onPlanningError={(err) => {
@@ -662,10 +662,10 @@ export function App() {
               {routeComparison ? (
                 <div>
                   <div style={{ color: "#a3be8c" }}>
-                    ✅ Route Planning Active - {routeComparison.active_threats?.length || 0} threats
+                    ✅ Route planning active - {routeComparison.active_threats?.length || 0} threats
                   </div>
                   <div style={{ color: "#88c0d0", marginTop: "4px" }}>
-                    🔵 Original Route ({routeComparison.original_route?.length || 0} points) / 🟢 Dynamic Route ({routeComparison.dynamic_route?.length || 0} points)
+                    🔵 Original({routeComparison.original_route?.length || 0} pts) / 🟢 Dynamic({routeComparison.dynamic_route?.length || 0} pts)
                   </div>
                   {routeComparison.avoidance_points?.length > 0 && (
                     <div style={{ color: "#d08770", marginTop: "4px" }}>
@@ -679,7 +679,7 @@ export function App() {
                   )}
                 </div>
               ) : route.length === 0 ? (
-                <div style={{ color: "#bf616a" }}>❌ Need to set base route first</div>
+                <div style={{ color: "#bf616a" }}>❌ Base route required first</div>
               ) : !aisEnabled ? (
                 <div style={{ color: "#ebcb8b" }}>⏳ Enabling AIS...</div>
               ) : (
@@ -689,7 +689,7 @@ export function App() {
           )}
         </div>
 
-        {/* Compliance Report */}
+        {/* Compliance Check */}
         <div style={{ marginBottom: "24px" }}>
           <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>Compliance Check</h3>
           <div style={{ 
@@ -707,7 +707,7 @@ export function App() {
             )}
             {report?.clause_refs ? (
               <div>
-                <div style={{ marginBottom: "8px", fontWeight: "bold" }}>Standard Terms:</div>
+                <div style={{ marginBottom: "8px", fontWeight: "bold" }}>Standard Clauses:</div>
                 {report.clause_refs.slice(0, 5).map((clause: any, i: number) => (
                   <div key={i} style={{ 
                     margin: "4px 0",
@@ -780,7 +780,7 @@ export function App() {
           </div>
         </div>
 
-        {/* Alert Panel */}
+        {/* Alerts Panel */}
         {report?.alerts && report.alerts.length > 0 && (
           <div>
             <h3 style={{ fontSize: "14px", marginBottom: "8px", color: "#81a1c1" }}>System Alerts</h3>
@@ -833,7 +833,7 @@ export function App() {
           flexDirection: "column",
           gap: "8px"
         }}>
-            {/* Top right evaluation panel (shown when comparison data exists) */}
+            {/* Top-right evaluation panel (shown when comparison data available) */}
             {routeComparison && (
               <div style={{ alignSelf: "flex-end" }}>
                 <EvaluationPanel 
@@ -843,7 +843,7 @@ export function App() {
                 />
               </div>
             )}
-            {/* Optional advanced evaluation panel (segment-level alignment + real parameters), displayed below evaluation card by default */}
+            {/* Optional advanced evaluation panel (segment-level alignment + real parameters), shown below evaluation card by default */}
             {routeComparison && (
               <div style={{ alignSelf: "flex-end" }}>
                 <div style={{ height: 8 }} />
@@ -853,7 +853,7 @@ export function App() {
                 />
               </div>
             )}
-          {/* Track Positioning Control */}
+          {/* Track Location Controls */}
           <div style={{
             background: "rgba(46, 52, 64, 0.95)",
             padding: "8px",
@@ -876,7 +876,7 @@ export function App() {
                 alignItems: "center",
                 gap: "4px"
               }}
-              title="Navigate to track center"
+              title="Center on track"
             >
               🎯 Track Center
             </button>
@@ -894,9 +894,9 @@ export function App() {
                 alignItems: "center",
                 gap: "4px"
               }}
-              title="Auto zoom to show complete track"
+              title="Auto-zoom to show full track"
             >
-              🔍 Fit View
+              🔍 Fit to View
             </button>
             {/* Rollback: Remove 🧮 Plan(Core) button */}
             <button
@@ -905,19 +905,19 @@ export function App() {
                   if (!route || route.length < 2) return;
                   const start = { lon: route[0][0], lat: route[0][1] };
                   const goal = { lon: route[route.length - 1][0], lat: route[route.length - 1][1] };
-                  console.log('Executing global replanning...');
-                  // Use RouteService for route planning (will automatically trigger subscription updates)
+                  console.log('Executing global replan...');
+                  // Use RouteService for route planning (will auto-trigger subscription update)
                   await routeService.planRoute(
                     { lat: route[0][1], lon: route[0][0] },
                     { lat: route[route.length - 1][1], lon: route[route.length - 1][0] }
                   );
                   
-                  // Route will be updated automatically through subscription, no need to manually setRoute
+                  // Route will auto-update via subscription, no need to manually setRoute
                   setDynamicRoute([]);
                   
                   // Set manual override window
                   manualOverrideUntilRef.current = Date.now() + 30000;
-                  console.log('Route planning complete, will update automatically via subscription');
+                  console.log('Route planning complete, will auto-update via subscription');
                   
                   // Re-enable dynamic planning
                   setTimeout(() => {
@@ -938,9 +938,9 @@ export function App() {
                 alignItems: "center",
                 gap: "4px"
               }}
-              title="Complete re-planning under AIS constraints"
+              title="Complete replan under AIS constraints"
             >
-              ♻️ Re-plan (Global)
+              ♻️ Replan (Global)
             </button>
           </div>
           
@@ -953,7 +953,7 @@ export function App() {
           }}>
             <div style={{ fontSize: "11px", color: "#81a1c1", lineHeight: "1.4" }}>
               📍 Mouse drag to pan | Scroll to zoom<br/>
-              ⌨️ Space: Track center | F: Fit view
+              ⌨️ Space: Track center | F: Fit to view
             </div>
             
           </div>

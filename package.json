@@ -1,0 +1,29 @@
+{
+  "name": "ais-range",
+  "version": "3.3.3",
+  "description": "AIS RANGE - Maritime Route Planning & Collision Avoidance System",
+  "main": "service/app.py",
+  "scripts": {
+    "setup": "python setup_environment.py",
+    "start": "cd service && PYTHONPATH=.. python app.py",
+    "dev": "cd ui && npm run dev",
+    "build": "cd ui && npm run build",
+    "test": "pytest tests/ -v"
+  },
+  "keywords": [
+    "maritime",
+    "ais",
+    "route-planning",
+    "collision-avoidance",
+    "ecdis",
+    "navigation",
+    "colreg",
+    "tss"
+  ],
+  "author": "AIS RANGE Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jasontimwong/ais-range.git"
+  }
+}

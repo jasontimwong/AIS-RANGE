@@ -1,3 +1,12 @@
+export async function planFullRoute(start: { lon: number; lat: number }, goal: { lon: number; lat: number }) {
+  const res = await fetch('/api/route/plan_full', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start: { lat: start.lat, lon: start.lon }, goal: { lat: goal.lat, lon: goal.lon } })
+  });
+  if (!res.ok) throw new Error(`plan_full failed: ${res.status}`);
+  return res.json() as Promise<{ coords: [number, number][], planning_time_s: number, used_ais: boolean }>;
+}
 import type { PlanRequestV1, ValidationReportV1, ServiceStatus } from "../types/schema";
 
 export type { ValidationReportV1 };
@@ -60,7 +69,11 @@ export async function getRoute(): Promise<{ coords: [number, number][]; report: 
  * 获取ENC-lite数据（简化的海图数据）
  */
 export async function getEncLite(): Promise<any> {
-  // 本地优先：先尝试静态文件，然后示例数据；不访问后端
+  // 优先：后端 /enc/lite（核心架构可航域抽取）→ 其次：静态 enc_lite.json → 最后：示例
+  try {
+    const apiRes = await fetch('/enc/lite');
+    if (apiRes.ok) return await apiRes.json();
+  } catch {}
   try {
     const base = (import.meta as any)?.env?.BASE_URL || '/';
     const prefix = base.endsWith('/') ? base.slice(0, -1) : base;
@@ -72,6 +85,8 @@ export async function getEncLite(): Promise<any> {
   } catch {}
   return getExampleEncData();
 }
+
+// （回滚）不在前端直接调用核心 /plan，保留此处空位以便将来需要时再启用
 
 /**
  * 验证路线

@@ -160,21 +160,21 @@ export const EvaluationPanel: React.FC<Props> = ({ routeComparison, originalRout
       minWidth: 260,
     }}>
       <div style={{ color: "#81a1c1", fontWeight: 600, marginBottom: 6 }}>
-        📈 避让影响评估
+        📈 Avoidance Impact Assessment
       </div>
       <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-        <div>原航程: <span style={{ color: "#88c0d0" }}>{metrics.originalNm.toFixed(1)} nm</span></div>
-        <div>新航程: <span style={{ color: "#88c0d0" }}>{metrics.dynamicNm.toFixed(1)} nm</span></div>
-        <div>航程增加: <span style={{ color: "#d08770" }}>{metrics.deltaNm.toFixed(1)} nm</span></div>
-        <div style={{ marginTop: 6 }}>ETA延长: <span style={{ color: "#d08770" }}>{(metrics.deltaHours).toFixed(2)} 小时</span></div>
-        <div>额外燃油: <span style={{ color: "#d08770" }}>{metrics.deltaFuelTon.toFixed(2)} 吨</span></div>
-        <div>燃油成本: <span style={{ color: "#a3be8c" }}>${metrics.deltaFuelCostUSD.toFixed(0)}</span></div>
-        <div>额外排放: <span style={{ color: "#bf616a" }}>{metrics.deltaCO2Ton.toFixed(2)} 吨CO₂</span></div>
+        <div>Original Distance: <span style={{ color: "#88c0d0" }}>{metrics.originalNm.toFixed(1)} nm</span></div>
+        <div>New Distance: <span style={{ color: "#88c0d0" }}>{metrics.dynamicNm.toFixed(1)} nm</span></div>
+        <div>Distance Increase: <span style={{ color: "#d08770" }}>{metrics.deltaNm.toFixed(1)} nm</span></div>
+        <div style={{ marginTop: 6 }}>ETA Delay: <span style={{ color: "#d08770" }}>{(metrics.deltaHours).toFixed(2)} hours</span></div>
+        <div>Extra Fuel: <span style={{ color: "#d08770" }}>{metrics.deltaFuelTon.toFixed(2)} tons</span></div>
+        <div>Fuel Cost: <span style={{ color: "#a3be8c" }}>${metrics.deltaFuelCostUSD.toFixed(0)}</span></div>
+        <div>Extra Emissions: <span style={{ color: "#bf616a" }}>{metrics.deltaCO2Ton.toFixed(2)} tons CO₂</span></div>
         {metrics.threats > 0 && (
-          <div style={{ marginTop: 6, color: "#ebcb8b" }}>活跃威胁: {metrics.threats} 个</div>
+          <div style={{ marginTop: 6, color: "#ebcb8b" }}>Active Threats: {metrics.threats}</div>
         )}
         {metrics.lastUpdate && (
-          <div style={{ color: "#5e81ac", marginTop: 4 }}>更新: {new Date(metrics.lastUpdate).toLocaleString()}</div>
+          <div style={{ color: "#5e81ac", marginTop: 4 }}>Updated: {new Date(metrics.lastUpdate).toLocaleString()}</div>
         )}
       </div>
     </div>

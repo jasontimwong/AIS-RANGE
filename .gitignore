@@ -10,6 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
+lib/
 lib64/
 parts/
 sdist/
@@ -18,65 +19,45 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.hypothesis/
-
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv
 
 # Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+.npm
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+
+# OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Logs
+# Project specific
+nohup.out
 *.log
-logs/
-service.log
-
-# Build artifacts
-ui/dist/
-ui/build/
-*.rtz
-
-# Test artifacts
-artifacts/validation_*.json
-artifacts/evidence_*.tar.gz
-artifacts/acceptance/
-artifacts/*.log
-
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Temporary files
+route_*.json
+test.s421
+测试结果/
 *.tmp
-temp/
-tmp/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Docker
-.dockerignore
-docker-compose.override.yml
+# Large data files (use Git LFS if needed)
+data/enc/ENC_ROOT/
+data/osm_tiles/
+data/openseamap_tiles/

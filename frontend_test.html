@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>前端功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #ddd;
+        }
+        .pass { border-color: #4CAF50; background: #f1f8f4; }
+        .fail { border-color: #f44336; background: #fef1f0; }
+        .pending { border-color: #FF9800; background: #fff8e1; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #2196F3;
+            color: white;
+        }
+        button:hover { background: #1976D2; }
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .status { font-weight: bold; }
+        .status.ok { color: #4CAF50; }
+        .status.error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <h1>🚢 ECDIS前端功能测试面板</h1>
+    
+    <div class="test-section">
+        <h2>系统状态</h2>
+        <div id="system-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>功能测试</h2>
+        <button onclick="runAllTests()">运行所有测试</button>
+        <button onclick="testRouting()">测试路径规划</button>
+        <button onclick="testAIS()">测试AIS系统</button>
+        <button onclick="testDynamic()">测试动态避碰</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>控制台输出</h2>
+        <div class="console" id="console"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8000';
+        const FRONTEND_URL = 'http://localhost:3000';
+        
+        // 日志输出
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#f44336' : type === 'success' ? '#4CAF50' : '#2196F3';
+            console.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        // 检查系统状态
+        async function checkSystemStatus() {
+            const statusDiv = document.getElementById('system-status');
+            statusDiv.innerHTML = '<p>检查中...</p>';
+            
+            let html = '<table style="width: 100%">';
+            
+            // 检查后端
+            try {
+                const res = await fetch(`${BASE_URL}/status`);
+                const data = await res.json();
+                html += `<tr><td>后端API</td><td class="status ok">✅ 运行中</td></tr>`;
+                html += `<tr><td>ENC数据</td><td class="status ${data.enc_loaded ? 'ok' : 'error'}">${data.enc_loaded ? '✅ 已加载' : '❌ 未加载'}</td></tr>`;
+                html += `<tr><td>规划器</td><td class="status ${data.planner_ready ? 'ok' : 'error'}">${data.planner_ready ? '✅ 就绪' : '❌ 未就绪'}</td></tr>`;
+            } catch (e) {
+                html += `<tr><td>后端API</td><td class="status error">❌ 离线</td></tr>`;
+            }
+            
+            // 检查前端
+            try {
+                const res = await fetch(`${FRONTEND_URL}/ui/`);
+                if (res.ok) {
+                    html += `<tr><td>前端UI</td><td class="status ok">✅ 运行中</td></tr>`;
+                } else {
+                    html += `<tr><td>前端UI</td><td class="status error">❌ 错误 ${res.status}</td></tr>`;
+                }
+            } catch (e) {
+                html += `<tr><td>前端UI</td><td class="status error">❌ 离线</td></tr>`;
+            }
+            
+            html += '</table>';
+            statusDiv.innerHTML = html;
+        }
+
+        // 测试路径规划
+        async function testRouting() {
+            log('开始测试路径规划...');
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h3>路径规划测试</h3>';
+            
+            // 测试1: 短距离规划
+            try {
+                const res = await fetch(`${BASE_URL}/api/route/plan_full`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        start: {lat: 31.23, lon: 121.508},
+                        goal: {lat: 22.3, lon: 114.2}
+                    })
+                });
+                const data = await res.json();
+                if (data.coords && data.coords.length > 10) {
+                    html += '<div class="test-item pass">✅ 短距离规划: 成功 (' + data.coords.length + '个点)</div>';
+                    log(`短距离规划成功: ${data.coords.length}个点`, 'success');
+                } else {
+                    html += '<div class="test-item fail">❌ 短距离规划: 路径点不足</div>';
+                    log('短距离规划失败: 路径点不足', 'error');
+                }
+            } catch (e) {
+                html += '<div class="test-item fail">❌ 短距离规划: ' + e.message + '</div>';
+                log('短距离规划错误: ' + e.message, 'error');
+            }
+            
+            // 测试2: 长距离规划
+            try {
+                const res = await fetch(`${BASE_URL}/api/route/plan_full`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        start: {lat: 31.23, lon: 121.508},
+                        goal: {lat: 1.27, lon: 103.85}
+                    })
+                });
+                const data = await res.json();
+                if (data.coords && data.coords.length > 50) {
+                    html += '<div class="test-item pass">✅ 长距离规划: 成功 (' + data.coords.length + '个点)</div>';
+                    log(`长距离规划成功: ${data.coords.length}个点`, 'success');
+                } else {
+                    html += '<div class="test-item fail">❌ 长距离规划: 路径点不足</div>';
+                    log('长距离规划失败: 路径点不足', 'error');
+                }
+            } catch (e) {
+                html += '<div class="test-item fail">❌ 长距离规划: ' + e.message + '</div>';
+                log('长距离规划错误: ' + e.message, 'error');
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 测试AIS系统
+        async function testAIS() {
+            log('开始测试AIS系统...');
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h3>AIS系统测试</h3>';
+            
+            // 测试场景切换
+            try {
+                const res1 = await fetch(`${BASE_URL}/api/ais/scenario`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({scenario: 'default'})
+                });
+                
+                const res2 = await fetch(`${BASE_URL}/api/ais/scenario`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({scenario: 'aggressive'})
+                });
+                
+                if (res1.ok && res2.ok) {
+                    html += '<div class="test-item pass">✅ AIS场景切换: 成功</div>';
+                    log('AIS场景切换成功', 'success');
+                } else {
+                    html += '<div class="test-item fail">❌ AIS场景切换: 失败</div>';
+                    log('AIS场景切换失败', 'error');
+                }
+            } catch (e) {
+                html += '<div class="test-item fail">❌ AIS场景切换: ' + e.message + '</div>';
+                log('AIS场景切换错误: ' + e.message, 'error');
+            }
+            
+            // 测试WebSocket连接
+            try {
+                const ws = new WebSocket('ws://localhost:8000/ws/ais');
+                await new Promise((resolve, reject) => {
+                    ws.onopen = () => {
+                        html += '<div class="test-item pass">✅ WebSocket连接: 成功</div>';
+                        log('WebSocket连接成功', 'success');
+                        ws.close();
+                        resolve();
+                    };
+                    ws.onerror = (e) => {
+                        html += '<div class="test-item fail">❌ WebSocket连接: 失败</div>';
+                        log('WebSocket连接失败', 'error');
+                        reject(e);
+                    };
+                    setTimeout(() => reject(new Error('超时')), 5000);
+                });
+            } catch (e) {
+                html += '<div class="test-item pending">⚠️ WebSocket连接: ' + e.message + '</div>';
+                log('WebSocket连接警告: ' + e.message, 'error');
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 测试动态避碰
+        async function testDynamic() {
+            log('开始测试动态避碰...');
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h3>动态避碰测试</h3>';
+            
+            // 初始化动态路径
+            try {
+                const res = await fetch(`${BASE_URL}/api/route/initialize`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        waypoints: [
+                            {lat: 31.23, lon: 121.508},
+                            {lat: 1.27, lon: 103.85}
+                        ]
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    html += '<div class="test-item pass">✅ 动态路径初始化: 成功</div>';
+                    log('动态路径初始化成功', 'success');
+                } else {
+                    html += '<div class="test-item fail">❌ 动态路径初始化: 失败</div>';
+                    log('动态路径初始化失败', 'error');
+                }
+            } catch (e) {
+                html += '<div class="test-item fail">❌ 动态路径初始化: ' + e.message + '</div>';
+                log('动态路径初始化错误: ' + e.message, 'error');
+            }
+            
+            // 获取动态路径
+            try {
+                const res = await fetch(`${BASE_URL}/api/route/dynamic?current_lat=31.23&current_lon=121.508`);
+                const data = await res.json();
+                if (data.route_comparison && data.route_comparison.dynamic_route) {
+                    const points = data.route_comparison.dynamic_route.length;
+                    html += '<div class="test-item pass">✅ 动态路径更新: 成功 (' + points + '个点)</div>';
+                    log(`动态路径更新成功: ${points}个点`, 'success');
+                } else {
+                    html += '<div class="test-item fail">❌ 动态路径更新: 无数据</div>';
+                    log('动态路径更新失败: 无数据', 'error');
+                }
+            } catch (e) {
+                html += '<div class="test-item fail">❌ 动态路径更新: ' + e.message + '</div>';
+                log('动态路径更新错误: ' + e.message, 'error');
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            log('开始运行所有测试...', 'info');
+            await checkSystemStatus();
+            await testRouting();
+            await testAIS();
+            await testDynamic();
+            log('所有测试完成！', 'success');
+        }
+
+        // 页面加载时检查状态
+        window.onload = () => {
+            checkSystemStatus();
+            log('测试面板已加载', 'info');
+        };
+    </script>
+</body>
+</html>

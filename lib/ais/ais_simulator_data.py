@@ -328,10 +328,50 @@ def get_simulation_vessels(scenario: str = "default"):
     """根据场景返回AIS模拟船舶列表。
     - default: 原有数据
     - aggressive: 在 default 基础上叠加攻击屏障
+    - opensea: 使用开放海域威胁场景
     """
     if scenario == "aggressive":
         return AIS_SIMULATION_VESSELS + AIS_SIMULATION_VESSELS_AGGRESSIVE
+    elif scenario == "opensea":
+        # 导入开放海域场景数据
+        try:
+            from .simulation_data_opensea import get_opensea_vessels
+            opensea_vessels = get_opensea_vessels("attack")
+            # 转换格式以兼容现有系统
+            converted_vessels = []
+            for vessel in opensea_vessels:
+                converted = {
+                    "mmsi": vessel["mmsi"],
+                    "name": vessel["name"],
+                    "type": _get_vessel_type_name(vessel.get("ship_type", 90)),
+                    "position": [vessel["lon"], vessel["lat"]],  # [lon, lat]
+                    "course": vessel["cog"],
+                    "speed": vessel["sog"],
+                    "heading": vessel["heading"],
+                    "length": vessel.get("length", 200),
+                    "width": vessel.get("width", 30),
+                    "draught": vessel.get("draught", 10.0),
+                    "destination": vessel.get("destination", "UNKNOWN"),
+                    "nav_status": vessel.get("nav_status", 0)
+                }
+                converted_vessels.append(converted)
+            return AIS_SIMULATION_VESSELS[:5] + converted_vessels  # 保留5艘普通船只+开放海域威胁
+        except ImportError:
+            print("无法导入开放海域场景，回退到aggressive场景")
+            return AIS_SIMULATION_VESSELS + AIS_SIMULATION_VESSELS_AGGRESSIVE
     return AIS_SIMULATION_VESSELS
+
+def _get_vessel_type_name(ship_type_code: int) -> str:
+    """从AIS船舶类型代码获取类型名称"""
+    type_map = {
+        70: "cargo",
+        80: "tanker",
+        60: "passenger",
+        30: "fishing",
+        55: "other",  # Law enforcement
+        90: "other"   # High speed craft or other
+    }
+    return type_map.get(ship_type_code, "other")
 
 def generate_ais_messages(base_time: datetime = None) -> List[Dict[str, Any]]:
     """

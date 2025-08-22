@@ -12,6 +12,7 @@ from typing import List, Optional, Dict, Any
 from pathlib import Path
 import tempfile
 import logging
+import math
 from datetime import datetime
 from lib.energy.fuel_estimator import evaluate_delta, polyline_length_nm
 import os
@@ -42,7 +43,10 @@ except RuntimeError:
 from lib.region.feasible_region import FeasibleRegionBuilder, SafetyParameters
 from lib.planner.hybrid_astar import HybridAStar, PlannerConfig, Route
 from lib.checks.route_checker import RouteChecker
+from lib.route.dynamic_planner import DynamicRoutePlanner
 from lib.io.rtz import RTZConverter, save_rtz, load_rtz
+from lib.route.intelligent_route_planner import plan_intelligent_route
+from lib.route.historical_route_planner import plan_with_historical_base
 
 # Configure logging early (before using logger)
 logging.basicConfig(level=logging.INFO)
@@ -72,10 +76,9 @@ if tiles_seamark_path.exists():
     app.mount("/static/openseamap", StaticFiles(directory=str(tiles_seamark_path)), name="openseamap_tiles")
 
 # Add CORS middleware to allow frontend access
-# Updated to port 3001 for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,6 +135,8 @@ class PlanResponse(BaseModel):
 class ValidateRequest(BaseModel):
     route_id: Optional[str] = None
     rtz_content: Optional[str] = None
+    route: Optional[List[List[float]]] = None  # 直接传递路径坐标
+    vessel: Optional[Dict[str, float]] = None  # 船舶参数
     checks: List[str] = Field(
         default=["safety", "tss", "geometry", "speed"],
         description="Validation checks to perform"
@@ -287,17 +292,74 @@ async def plan_route(request: PlanRequest):
             state.feasible_region = builder.build_from_enc(state.enc_reader)
             state.planner = None  # Reset planner to use new feasible region
         
-        # Initialize planner if not already done
-        if not state.planner and state.feasible_region:
+        # Initialize planner if not already done  
+        if state.feasible_region and not state.planner:
+            # 根据距离动态调整配置
+            lat_avg = (request.start.lat + request.goal.lat) / 2.0
+            meters_per_deg_lat = 111320.0
+            meters_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg))
+            
+            start_x = request.start.lon * meters_per_deg_lon
+            start_y = request.start.lat * meters_per_deg_lat
+            goal_x = request.goal.lon * meters_per_deg_lon
+            goal_y = request.goal.lat * meters_per_deg_lat
+            
+            distance_estimate = math.sqrt(
+                (goal_x - start_x)**2 + (goal_y - start_y)**2
+            ) / 1000.0  # km
+            
+            # 长距离使用更大的步长和更多迭代
+            if distance_estimate > 1000:
+                motion_step = 500.0  # 500m步长
+                max_iter = 50000    # 更多迭代
+            elif distance_estimate > 500:
+                motion_step = 200.0  # 200m步长
+                max_iter = 20000
+            else:
+                motion_step = 100.0  # 100m步长
+                max_iter = 10000
+            
             config = PlannerConfig(
-                grid_resolution=100.0,  # 100m grid
-                motion_step=100.0,  # 100m steps
-                max_iterations=5000,  # Enough iterations
-                goal_tolerance_xy=100.0  # 100m tolerance
+                grid_resolution=motion_step,  # 网格分辨率匹配步长
+                motion_step=motion_step,      # 动态步长
+                max_iterations=max_iter,       # 动态迭代次数
+                goal_tolerance_xy=motion_step * 2  # 容差为步长的2倍
             )
             state.planner = HybridAStar(config, state.feasible_region)
-        elif not state.planner:
-            # Create dummy feasible region for testing
+        
+        # If still no planner but we have a region, create the planner
+        if state.feasible_region and not state.planner:
+            # Create planner with the existing region
+            lat_avg = (request.start.lat + request.goal.lat) / 2.0
+            meters_per_deg_lat = 111320.0
+            meters_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg))
+            
+            start_x = request.start.lon * meters_per_deg_lon
+            start_y = request.start.lat * meters_per_deg_lat
+            goal_x = request.goal.lon * meters_per_deg_lon
+            goal_y = request.goal.lat * meters_per_deg_lat
+            
+            distance_estimate = math.sqrt((goal_x - start_x)**2 + (goal_y - start_y)**2) / 1000.0
+            
+            if distance_estimate < 100:
+                motion_step = 50.0
+                max_iter = 200000
+            elif distance_estimate < 500:
+                motion_step = 100.0
+                max_iter = 300000
+            else:
+                motion_step = 200.0
+                max_iter = 500000
+                
+            config = PlannerConfig(
+                motion_step=motion_step,
+                max_iterations=max_iter,
+                goal_tolerance_xy=motion_step * 2
+            )
+            state.planner = HybridAStar(config, state.feasible_region)
+            
+        elif not state.feasible_region:
+            # Create dummy feasible region only if no region loaded at startup
             from lib.region.feasible_region import FeasibleRegion
             from shapely.geometry import MultiPolygon, box
             
@@ -326,11 +388,27 @@ async def plan_route(request: PlanRequest):
                 danger_zones=[],
                 restricted_areas=[]
             )
+            # 根据距离动态调整配置
+            distance_estimate = math.sqrt(
+                (max_x - min_x)**2 + (max_y - min_y)**2
+            ) / 1000.0  # km
+            
+            # 长距离使用更大的步长和更多迭代
+            if distance_estimate > 1000:
+                motion_step = 500.0  # 500m步长
+                max_iter = 50000    # 更多迭代
+            elif distance_estimate > 500:
+                motion_step = 200.0  # 200m步长
+                max_iter = 20000
+            else:
+                motion_step = 100.0  # 100m步长
+                max_iter = 10000
+            
             config = PlannerConfig(
-                grid_resolution=100.0,  # 100m grid
-                motion_step=100.0,  # 100m steps
-                max_iterations=5000,  # Enough iterations
-                goal_tolerance_xy=100.0  # 100m tolerance
+                grid_resolution=motion_step,  # 网格分辨率匹配步长
+                motion_step=motion_step,      # 动态步长
+                max_iterations=max_iter,       # 动态迭代次数
+                goal_tolerance_xy=motion_step * 2  # 容差为步长的2倍
             )
             state.planner = HybridAStar(config, state.feasible_region)
         
@@ -346,17 +424,107 @@ async def plan_route(request: PlanRequest):
         goal_x = request.goal.lon * meters_per_deg_lon
         goal_y = request.goal.lat * meters_per_deg_lat
         
-        # Plan route
-        start_pose = (start_x, start_y, 0.0)  # Heading will be calculated
-        goal_pose = (goal_x, goal_y, None)  # No specific goal heading
+        # Calculate distance to determine planning strategy
+        distance_m = math.sqrt((goal_x - start_x)**2 + (goal_y - start_y)**2)
+        distance_km = distance_m / 1000.0
         
-        route = state.planner.plan(
-            start_pose,
-            goal_pose,
-            initial_velocity=request.vessel_speed * 0.514444  # knots to m/s
-        )
+        # Also calculate great circle distance for comparison
+        R = 6371.0  # Earth radius in km
+        lat1_rad = math.radians(request.start.lat)
+        lat2_rad = math.radians(request.goal.lat)
+        dlat = lat2_rad - lat1_rad
+        dlon = math.radians(request.goal.lon - request.start.lon)
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        great_circle_km = R * c
         
-        if not route:
+        logger.info(f"Distance calculation - Projected: {distance_km:.1f} km, Great Circle: {great_circle_km:.1f} km")
+        logger.info(f"Start: ({request.start.lat}, {request.start.lon}), Goal: ({request.goal.lat}, {request.goal.lon})")
+        
+        # 暂时降低阈值，避免Hybrid A*在错误的禁航区中失败
+        # TODO: 修复陆地数据后恢复到2000km
+        if great_circle_km > 50:
+            # Generate great circle route for long distances
+            logger.info(f"Using great circle route for long distance: {great_circle_km:.1f} km")
+            waypoints = []
+            num_points = max(100, int(great_circle_km / 10))  # One point per 10km approximately
+            
+            # Great circle interpolation
+            lat1, lon1 = math.radians(request.start.lat), math.radians(request.start.lon)
+            lat2, lon2 = math.radians(request.goal.lat), math.radians(request.goal.lon)
+            
+            # Calculate great circle distance
+            d = 2 * math.asin(math.sqrt(
+                math.sin((lat2-lat1)/2)**2 + 
+                math.cos(lat1) * math.cos(lat2) * math.sin((lon2-lon1)/2)**2
+            ))
+            
+            # Generate intermediate points
+            for i in range(num_points):
+                f = i / (num_points - 1)
+                
+                # Great circle interpolation
+                a = math.sin((1-f)*d) / math.sin(d) if d > 0.001 else 1-f
+                b = math.sin(f*d) / math.sin(d) if d > 0.001 else f
+                
+                x = a * math.cos(lat1) * math.cos(lon1) + b * math.cos(lat2) * math.cos(lon2)
+                y = a * math.cos(lat1) * math.sin(lon1) + b * math.cos(lat2) * math.sin(lon2)
+                z = a * math.sin(lat1) + b * math.sin(lat2)
+                
+                lat = math.atan2(z, math.sqrt(x**2 + y**2))
+                lon = math.atan2(y, x)
+                
+                # Calculate heading to next point
+                if i < num_points - 1:
+                    f_next = (i + 1) / (num_points - 1)
+                    a_next = math.sin((1-f_next)*d) / math.sin(d) if d > 0.001 else 1-f_next
+                    b_next = math.sin(f_next*d) / math.sin(d) if d > 0.001 else f_next
+                    x_next = a_next * math.cos(lat1) * math.cos(lon1) + b_next * math.cos(lat2) * math.cos(lon2)
+                    y_next = a_next * math.cos(lat1) * math.sin(lon1) + b_next * math.cos(lat2) * math.sin(lon2)
+                    z_next = a_next * math.sin(lat1) + b_next * math.sin(lat2)
+                    lat_next = math.atan2(z_next, math.sqrt(x_next**2 + y_next**2))
+                    lon_next = math.atan2(y_next, x_next)
+                    
+                    # Calculate bearing
+                    dlon = lon_next - lon
+                    bearing = math.atan2(
+                        math.sin(dlon) * math.cos(lat_next),
+                        math.cos(lat) * math.sin(lat_next) - math.sin(lat) * math.cos(lat_next) * math.cos(dlon)
+                    )
+                else:
+                    bearing = 0.0
+                
+                waypoints.append({
+                    "lat": math.degrees(lat),
+                    "lon": math.degrees(lon),
+                    "heading_deg": math.degrees(bearing) % 360,
+                    "speed_kts": request.vessel_speed
+                })
+            
+            # Create a simple route object
+            import time
+            from types import SimpleNamespace
+            planning_start = time.time()
+            route = SimpleNamespace(
+                waypoints=[(wp["lon"] * meters_per_deg_lon, wp["lat"] * meters_per_deg_lat) for wp in waypoints],
+                headings=[math.radians(wp["heading_deg"]) for wp in waypoints],
+                velocities=[request.vessel_speed * 0.514444 for _ in waypoints],
+                planning_time=time.time() - planning_start
+            )
+            route.get_length = lambda: great_circle_km * 1000  # Return distance in meters
+            
+        else:
+            # Use Hybrid A* for shorter distances
+            start_pose = (start_x, start_y, 0.0)  # Heading will be calculated
+            goal_pose = (goal_x, goal_y, None)  # No specific goal heading
+            
+            route = state.planner.plan(
+                start_pose,
+                goal_pose,
+                initial_velocity=request.vessel_speed * 0.514444  # knots to m/s
+            )
+        
+        if not route or not hasattr(route, 'waypoints') or len(route.waypoints) == 0:
             raise HTTPException(status_code=400, detail="No valid route found")
         
         state.current_route = route
@@ -436,6 +604,24 @@ async def validate_route(request: ValidateRequest):
             rtz_route = RTZRoute.from_xml(request.rtz_content)
             route = RTZConverter.rtz_to_route(rtz_route)
             route_name = rtz_route.route_name
+        elif request.route:
+            # 直接使用传递的路径坐标
+            from lib.route.dynamic_planner import DynamicRoute, RouteWaypoint
+            from datetime import datetime
+            waypoints = []
+            for i, coord in enumerate(request.route):
+                waypoints.append(RouteWaypoint(
+                    lat=coord[1],  # 假设格式是 [lon, lat]
+                    lon=coord[0],
+                    sog=15.0
+                ))
+            route = DynamicRoute(
+                waypoints=waypoints,
+                original_route=[(wp.lon, wp.lat) for wp in waypoints],
+                last_update=datetime.now(),
+                active_threats=[]  # 没有威胁
+            )
+            route_name = "DirectRoute"
         else:
             raise HTTPException(status_code=400, detail="No route specified for validation")
         
@@ -475,6 +661,8 @@ async def validate_route(request: ValidateRequest):
             report_url=str(report_path)
         )
         
+    except HTTPException:
+        raise  # 直接重新抛出HTTP异常
     except Exception as e:
         logger.error(f"Validation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1016,7 +1204,7 @@ class AISWebSocketManager:
         logger.info("AIS系统已启动")
 
     def set_scenario(self, scenario: str):
-        self.scenario = scenario if scenario in ("default", "aggressive") else "default"
+        self.scenario = scenario if scenario in ("default", "aggressive", "opensea") else "default"
         if self.ais_manager:
             self.ais_manager.set_scenario(self.scenario)
         
@@ -1053,13 +1241,219 @@ class AISWebSocketManager:
         except RuntimeError:
             pass  # 忽略事件循环错误
 
+def initialize_maritime_data():
+    """初始化海事数据，使用新的简化陆地数据"""
+    from service.init_maritime import initialize_maritime_region
+    from lib.region.feasible_region import FeasibleRegion, FeasibleRegionBuilder, SafetyParameters
+    
+    logger.info("开始加载亚太地区海事数据...")
+    
+    try:
+        # 初始化数据变量
+        land_data = None
+        
+        # 优先加载亚太地区陆地数据（更完整）
+        land_path = Path("ui/public/geo/asia-pacific-land.json")
+        if land_path.exists():
+            with open(land_path, 'r') as f:
+                land_data = json.load(f)
+                logger.info(f"加载了 {len(land_data.get('features', []))} 个陆地特征")
+        else:
+            # 备用：加载海岸线数据
+            coastline_path = Path("ui/public/geo/asia-pacific-coastline.json")
+            if coastline_path.exists():
+                with open(coastline_path, 'r') as f:
+                    land_data = json.load(f)
+                    logger.info(f"加载了 {len(land_data.get('features', []))} 个海岸线特征")
+        
+        # 加载亚太地区海标数据（包含TSS）
+        seamarks_path = Path("ui/public/geo/asia-pacific-seamarks.json")
+        tss_lanes = []
+        if seamarks_path.exists():
+            with open(seamarks_path, 'r') as f:
+                seamarks_data = json.load(f)
+                # 提取TSS车道
+                for feature in seamarks_data.get('features', []):
+                    if feature.get('properties', {}).get('seamark:type') == 'separation_lane':
+                        tss_lanes.append(feature)
+                logger.info(f"加载了 {len(tss_lanes)} 个TSS车道")
+        
+        # 加载深度数据
+        bathymetry_path = Path("ui/public/geo/asia-pacific-bathymetry.json")
+        shallow_areas = []
+        if bathymetry_path.exists():
+            with open(bathymetry_path, 'r') as f:
+                bathymetry_data = json.load(f)
+                # 提取浅水区域（深度 < 20米）
+                for feature in bathymetry_data.get('features', []):
+                    depth = feature.get('properties', {}).get('depth', 0)
+                    if depth > 0 and depth < 20:
+                        shallow_areas.append(feature)
+                logger.info(f"识别了 {len(shallow_areas)} 个浅水区域")
+        
+        # 构建亚太地区的FeasibleRegion
+        # 定义亚太地区边界（经度：60E-180E，纬度：-50S-60N）
+        min_lon, max_lon = 60, 180
+        min_lat, max_lat = -50, 60
+        
+        # 转换为米制坐标（使用平均纬度计算）
+        import math
+        lat_avg = (min_lat + max_lat) / 2.0  # 亚太地区平均纬度
+        meters_per_deg_lat = 111320.0
+        meters_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg))
+        
+        min_x = min_lon * meters_per_deg_lon
+        max_x = max_lon * meters_per_deg_lon
+        min_y = min_lat * meters_per_deg_lat
+        max_y = max_lat * meters_per_deg_lat
+        
+        # 创建禁航区域（从陆地多边形创建）
+        no_go_areas = []
+        land_polygons = []  # 先收集所有陆地多边形
+        
+        if land_data:
+            for i, feature in enumerate(land_data.get('features', [])):
+                if feature.get('geometry'):
+                    try:
+                        # 将GeoJSON转换为Shapely几何体
+                        geom = shape(feature['geometry'])
+                        
+                        # 确保几何体有效
+                        if not geom.is_valid:
+                            geom = geom.buffer(0)  # 修复无效几何体
+                        
+                        # 处理不同类型的几何体
+                        if geom.geom_type == 'Polygon':
+                            # 转换坐标到米制
+                            coords = []
+                            for lon, lat in geom.exterior.coords:
+                                x = lon * meters_per_deg_lon
+                                y = lat * meters_per_deg_lat
+                                coords.append((x, y))
+                            if len(coords) > 2:
+                                poly = Polygon(coords)
+                                if poly.is_valid:
+                                    land_polygons.append(poly)
+                        elif geom.geom_type == 'MultiPolygon':
+                            # 多个多边形
+                            for polygon in geom.geoms:
+                                coords = []
+                                for lon, lat in polygon.exterior.coords:
+                                    x = lon * meters_per_deg_lon
+                                    y = lat * meters_per_deg_lat
+                                    coords.append((x, y))
+                                if len(coords) > 2:
+                                    poly = Polygon(coords)
+                                    if poly.is_valid:
+                                        land_polygons.append(poly)
+                    except Exception as e:
+                        if i < 10:  # 只记录前10个错误
+                            logger.warning(f"处理陆地特征 {i} 时出错: {e}")
+        
+        # 合并所有陆地多边形并创建缓冲区
+        if land_polygons:
+            try:
+                # 合并成一个MultiPolygon
+                land_union = MultiPolygon(land_polygons)
+                # 创建500米的安全缓冲区
+                land_with_buffer = land_union.buffer(500)
+                # 将缓冲后的区域作为禁航区
+                if isinstance(land_with_buffer, Polygon):
+                    no_go_areas = [land_with_buffer]
+                else:
+                    no_go_areas = list(land_with_buffer.geoms)
+                logger.info(f"成功创建了 {len(land_polygons)} 个陆地多边形的禁航区")
+            except Exception as e:
+                logger.error(f"合并陆地多边形时出错: {e}")
+                # 如果合并失败，单独添加每个多边形
+                for poly in land_polygons[:100]:  # 限制数量避免内存问题
+                    try:
+                        buffer = poly.buffer(500)
+                        no_go_areas.append(buffer)
+                    except:
+                        pass
+        
+        # 添加浅水区作为禁航区
+        for feature in shallow_areas:
+            if feature.get('geometry'):
+                try:
+                    geom = shape(feature['geometry'])
+                    if hasattr(geom, 'exterior'):
+                        coords = []
+                        for lon, lat in geom.exterior.coords:
+                            x = lon * meters_per_deg_lon
+                            y = lat * meters_per_deg_lat
+                            coords.append((x, y))
+                        if len(coords) > 2:
+                            poly = Polygon(coords)
+                            no_go_areas.append(poly)
+                except Exception as e:
+                    logger.warning(f"处理浅水区域时出错: {e}")
+        
+        # 创建可航区域（总区域减去禁航区）
+        total_area = box(min_x, min_y, max_x, max_y)
+        if no_go_areas:
+            no_go_multi = MultiPolygon(no_go_areas)
+            navigable_area = total_area.difference(no_go_multi)
+            if not isinstance(navigable_area, MultiPolygon):
+                navigable_area = MultiPolygon([navigable_area]) if navigable_area else MultiPolygon([total_area])
+        else:
+            navigable_area = MultiPolygon([total_area])
+        
+        # 创建FeasibleRegion
+        state.feasible_region = FeasibleRegion(
+            bounds=(min_x, min_y, max_x, max_y),
+            no_go_areas=MultiPolygon(no_go_areas) if no_go_areas else MultiPolygon([]),
+            navigable_area=navigable_area,
+            depth_contours={},
+            danger_zones=[],
+            restricted_areas=[],
+            tss_zones=None  # TODO: Convert tss_lanes to TSSZones structure
+        )
+        
+        logger.info(f"成功构建亚太地区FeasibleRegion:")
+        logger.info(f"  - 边界: {min_lon}E-{max_lon}E, {min_lat}S-{max_lat}N")
+        logger.info(f"  - 禁航区域数: {len(no_go_areas)}")
+        logger.info(f"  - TSS车道数: {len(tss_lanes)}")
+        logger.info(f"  - 可航区域已创建")
+        
+        # 标记已加载
+        state.enc_reader = "AsiaPacificData"  # 标记已加载数据
+        
+    except Exception as e:
+        logger.error(f"加载海事数据失败: {e}")
+        logger.info("将使用简化的测试数据")
+        
+        # 创建简化的测试FeasibleRegion
+        state.feasible_region = FeasibleRegion(
+            bounds=(min_x, min_y, max_x, max_y),
+            no_go_areas=MultiPolygon([]),
+            navigable_area=MultiPolygon([box(min_x, min_y, max_x, max_y)]),
+            depth_contours={},
+            danger_zones=[],
+            restricted_areas=[],
+            tss_zones=None
+        )
+
 # 创建WebSocket管理器
 ws_manager = AISWebSocketManager()
 
 @app.on_event("startup")
 async def startup_event():
-    """启动时初始化AIS系统"""
+    """启动时初始化AIS系统和ENC数据"""
     ws_manager.initialize()
+    
+    # 初始化海事数据，使用简化的亚太地区陆地数据
+    try:
+        from service.init_maritime import initialize_maritime_region
+        maritime_region = initialize_maritime_region()
+        if maritime_region:
+            state.feasible_region = maritime_region
+            logger.info("✅ 成功初始化海事FeasibleRegion，已加载亚太地区陆地约束")
+        else:
+            logger.warning("⚠️ 海事区域初始化返回None")
+    except Exception as e:
+        logger.error(f"❌ 初始化海事数据失败: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -1300,8 +1694,44 @@ async def get_dynamic_route(current_lat: float = 31.23, current_lon: float = 121
     current_position = (current_lat, current_lon)
     dynamic_route = ws_manager.dynamic_planner.update_dynamic_route(current_position)
     
+    # 调试信息
+    ais_targets = ws_manager.ais_manager.get_all_targets() if ws_manager.ais_manager else []
+    debug_info = {
+        "ais_scenario": ws_manager.ais_manager.get_scenario() if ws_manager.ais_manager else "unknown",
+        "ais_targets_available": len(ais_targets),
+        "ais_mmsi_list": [t.mmsi for t in ais_targets[:5]] if ais_targets else [],
+        "dynamic_route_returned": dynamic_route is not None,
+        "dynamic_route_type": type(dynamic_route).__name__ if dynamic_route else "None"
+    }
+    
+    # 如果没有动态路径，返回基础路径
     if not dynamic_route:
-        raise HTTPException(status_code=404, detail="No dynamic route available")
+        # 获取基础路径（从current_dynamic_route）
+        baseline_route = ws_manager.dynamic_planner.current_dynamic_route if ws_manager.dynamic_planner else None
+        if baseline_route:
+            # 返回基础路径作为动态路径
+            return {
+                "status": "baseline",
+                "current_position": {"lat": current_lat, "lon": current_lon},
+                "route_comparison": {
+                    "baseline_route": [(wp.lat, wp.lon) for wp in baseline_route.waypoints] if baseline_route else [],
+                    "dynamic_route": [(wp.lat, wp.lon) for wp in baseline_route.waypoints] if baseline_route else [],
+                    "has_threats": False,
+                    "active_threats": [],
+                    "avoidance_points": []
+                },
+                "threat_count": 0,
+                "last_update": datetime.now().isoformat(),
+                "debug": debug_info
+            }
+        else:
+            # 真的没有路径可用
+            return {
+                "status": "no_route",
+                "current_position": {"lat": current_lat, "lon": current_lon},
+                "error": "No route available",
+                "debug": debug_info
+            }
     
     comparison_data = ws_manager.dynamic_planner.get_route_comparison()
     
@@ -1310,8 +1740,45 @@ async def get_dynamic_route(current_lat: float = 31.23, current_lon: float = 121
         "current_position": {"lat": current_lat, "lon": current_lon},
         "route_comparison": comparison_data,
         "threat_count": len(dynamic_route.active_threats),
-        "last_update": dynamic_route.last_update.isoformat()
+        "last_update": dynamic_route.last_update.isoformat(),
+        "debug": debug_info
     }
+
+@app.get("/api/test/debug-dynamic-planner")
+async def debug_dynamic_planner():
+    """调试动态规划器的威胁检测"""
+    if not ws_manager.dynamic_planner or not ws_manager.ais_manager:
+        return {"error": "Dynamic planner or AIS manager not initialized"}
+    
+    # 手动调用AIS更新并获取目标
+    ws_manager.ais_manager.update_targets()
+    ais_targets = ws_manager.ais_manager.get_all_targets()
+    scenario = ws_manager.ais_manager.get_scenario()
+    
+    # 手动调用动态规划器更新
+    current_position = (31.23, 121.508)
+    
+    debug_info = {
+        "ais_manager_scenario": scenario,
+        "ais_targets_count": len(ais_targets),
+        "ais_targets_mmsi": [t.mmsi for t in ais_targets[:5]],
+        "dynamic_planner_initialized": ws_manager.dynamic_planner.current_dynamic_route is not None,
+    }
+    
+    if ws_manager.dynamic_planner.current_dynamic_route:
+        debug_info["current_route_waypoints"] = len(ws_manager.dynamic_planner.current_dynamic_route.waypoints)
+        debug_info["current_active_threats"] = ws_manager.dynamic_planner.current_dynamic_route.active_threats
+        
+        # 强制调用更新
+        try:
+            updated_route = ws_manager.dynamic_planner.update_dynamic_route(current_position)
+            debug_info["update_successful"] = True
+            debug_info["updated_threats"] = updated_route.active_threats if updated_route else []
+            debug_info["updated_waypoints"] = len(updated_route.waypoints) if updated_route else 0
+        except Exception as e:
+            debug_info["update_error"] = str(e)
+    
+    return debug_info
 
 @app.get("/api/test/demo-50m-improvement")
 async def demonstrate_50m_improvement():
@@ -1425,7 +1892,235 @@ async def force_route_update(position_data: dict):
     
     return {"status": "no_update_needed"}
 
+# 全量重规划（带AIS约束）供前端调用
+@app.post("/api/route/plan_full")
+async def plan_full_route(body: Dict[str, Any]):
+    """在加入当前AIS威胁约束的可航域上，进行一次完整的规划。
+    对于长距离使用大圆航线，短距离使用混合A*。
+    请求体: { start: {lat,lon}, goal: {lat,lon} }
+    响应: { coords: [[lon,lat], ...], planning_time_s, used_ais: true/false }
+    """
+    try:
+        start = body.get("start")
+        goal = body.get("goal")
+        if not start or not goal:
+            raise HTTPException(status_code=400, detail="start/goal required")
+
+        start_lat, start_lon = float(start["lat"]), float(start["lon"])
+        goal_lat, goal_lon = float(goal["lat"]), float(goal["lon"]) 
+
+        # 获取可航区域
+        region = getattr(state, 'feasible_region', None)
+        if region is None:
+            # 创建简化可航区域（与 /plan 回退逻辑一致），保证功能可用
+            from lib.region.feasible_region import FeasibleRegion
+            from shapely.geometry import MultiPolygon, box
+            import math
+            lat_avg_local = (start_lat + goal_lat) / 2.0
+            meters_per_deg_lat = 111320.0
+            meters_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg_local))
+            min_lon = min(start_lon, goal_lon) - 1.0
+            max_lon = max(start_lon, goal_lon) + 1.0
+            min_lat = min(start_lat, goal_lat) - 1.0
+            max_lat = max(start_lat, goal_lat) + 1.0
+            min_x = min_lon * meters_per_deg_lon
+            max_x = max_lon * meters_per_deg_lon
+            min_y = min_lat * meters_per_deg_lat
+            max_y = max_lat * meters_per_deg_lat
+            region = FeasibleRegion(
+                bounds=(min_x, min_y, max_x, max_y),
+                no_go_areas=MultiPolygon([]),
+                navigable_area=MultiPolygon([box(min_x, min_y, max_x, max_y)]),
+                depth_contours={},
+                danger_zones=[],
+                restricted_areas=[]
+            )
+
+        # 应用AIS约束（若有）
+        constrained_region = region
+        try:
+            if ws_manager and getattr(ws_manager, 'dynamic_planner', None):
+                ws_manager.ais_manager.update_targets()
+                targets = ws_manager.ais_manager.get_all_targets()
+                if targets:
+                    constrained_region = ws_manager.dynamic_planner._apply_ais_constraints(region, targets, (start_lat, start_lon))
+        except Exception:
+            constrained_region = region
+
+        # 本地投影换算
+        import math, time as _time
+        lat_avg = (start_lat + goal_lat) / 2.0
+        m_per_deg_lat = 111320.0
+        m_per_deg_lon = 111320.0 * math.cos(math.radians(lat_avg))
+        sx = start_lon * m_per_deg_lon
+        sy = start_lat * m_per_deg_lat
+        gx = goal_lon * m_per_deg_lon
+        gy = goal_lat * m_per_deg_lat
+
+        # 计算大圆距离以决定使用哪种规划算法
+        R = 6371.0  # Earth radius in km
+        lat1_rad = math.radians(start_lat)
+        lat2_rad = math.radians(goal_lat)
+        dlat = lat2_rad - lat1_rad
+        dlon = math.radians(goal_lon - start_lon)
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        great_circle_km = R * c
+        
+        t0 = _time.time()
+        coords = []
+        
+        if great_circle_km > 500:  # 使用智能路径规划器
+            logger.info(f"Using intelligent route planner for long distance: {great_circle_km:.1f} km")
+            
+            # 使用新的智能路径规划器
+            try:
+                # 配置选项
+                planning_options = {
+                    "use_tss": True,  # 使用TSS航道
+                    "use_historical": True,  # 参考历史航道
+                    "dynamic_optimization": True,  # 动态优化
+                    "weather_routing": False,  # 暂不考虑天气
+                    "fuel_optimization": True,  # 优化燃料
+                    "time_priority": 0.7  # 时间优先级较高
+                }
+                
+                # 使用基于历史航线的动态规划器
+                result = plan_with_historical_base(
+                    {"lat": start_lat, "lon": start_lon},
+                    {"lat": goal_lat, "lon": goal_lon},
+                    planning_options
+                )
+                
+                if result["status"] == "success":
+                    coords = result["coords"]
+                    print(f"DEBUG: 历史规划器成功，返回 {len(coords)} 个航点")
+                    print(f"DEBUG: 起点: {coords[0] if coords else 'None'}")
+                    print(f"DEBUG: 终点: {coords[-1] if coords else 'None'}")
+                    logger.info(f"Intelligent route planned successfully:")
+                    logger.info(f"  - Waypoints: {len(coords)}")
+                    logger.info(f"  - Distance: {result['metrics']['total_distance_nm']:.1f} nm")
+                    logger.info(f"  - TSS Compliant: {result['tss_compliant']}")
+                    logger.info(f"  - Confidence: {result['confidence']:.2f}")
+                    logger.info(f"  - Route Type: {result['route_type']}")
+                else:
+                    raise Exception("Intelligent planner failed")
+                    
+            except Exception as e:
+                logger.warning(f"Intelligent planner failed, falling back to legacy method: {e}")
+                print(f"DEBUG: 历史规划器失败，回退到预定义路径: {e}")
+                
+                # 尝试使用传统的预定义路径
+                try:
+                    from scripts.use_predefined_routes import find_best_route, generate_optimal_route
+                    route = find_best_route(start_lat, start_lon, goal_lat, goal_lon)
+                    if route and route.get('waypoints'):
+                        logger.info(f"Using predefined safe route: {route['name']}")
+                        coords = route['waypoints']
+                        print(f"DEBUG: 预定义路径成功: {route['name']}")
+                        print(f"DEBUG: 预定义路径航点数: {len(coords)}")
+                        print(f"DEBUG: 预定义路径终点: {coords[-1] if coords else 'None'}")
+                    else:
+                        # 使用TSS感知的最优路径生成器
+                        logger.info("No predefined route found, generating TSS-aware optimal route")
+                        route = generate_optimal_route(start_lat, start_lon, goal_lat, goal_lon, 
+                                                     max(20, int(great_circle_km / 50)))
+                        coords = route['waypoints']
+                        print(f"DEBUG: TSS路径生成成功")
+                        print(f"DEBUG: TSS路径航点数: {len(coords)}")
+                        print(f"DEBUG: TSS路径终点: {coords[-1] if coords else 'None'}")
+                except Exception as e2:
+                    logger.info(f"Falling back to simple great circle route: {e2}")
+                    # 回退到简单大圆航线
+                    num_points = max(100, int(great_circle_km / 10))
+                    lat1, lon1 = math.radians(start_lat), math.radians(start_lon)
+                    lat2, lon2 = math.radians(goal_lat), math.radians(goal_lon)
+                    
+                    d = 2 * math.asin(math.sqrt(
+                        math.sin((lat2-lat1)/2)**2 + 
+                        math.cos(lat1) * math.cos(lat2) * math.sin((lon2-lon1)/2)**2
+                    ))
+                    
+                    coords = []
+                    for i in range(num_points):
+                        f = i / (num_points - 1)
+                        a = math.sin((1-f)*d) / math.sin(d) if d > 0.001 else 1-f
+                        b = math.sin(f*d) / math.sin(d) if d > 0.001 else f
+                        
+                        x = a * math.cos(lat1) * math.cos(lon1) + b * math.cos(lat2) * math.cos(lon2)
+                        y = a * math.cos(lat1) * math.sin(lon1) + b * math.cos(lat2) * math.sin(lon2)
+                        z = a * math.sin(lat1) + b * math.sin(lat2)
+                        
+                        lat = math.atan2(z, math.sqrt(x**2 + y**2))
+                        lon = math.atan2(y, x)
+                        
+                        coords.append([math.degrees(lon), math.degrees(lat)])
+                if len(coords) == 1:  # 只在第一次添加时打印
+                    print(f"DEBUG: 回退到大圆航线")
+                
+        else:  # 短距离也优先使用智能规划器
+            logger.info(f"Short distance route: {great_circle_km:.1f} km")
+            
+            # 即使是短距离，也先尝试使用智能规划器（可能有预定义路径）
+            try:
+                planning_options = {
+                    "use_tss": True,
+                    "use_historical": True, 
+                    "dynamic_optimization": True,
+                    "weather_routing": False,
+                    "fuel_optimization": False,  # 短距离不需要燃料优化
+                    "time_priority": 0.8  # 短距离时间优先
+                }
+                
+                result = plan_with_historical_base(
+                    {"lat": start_lat, "lon": start_lon},
+                    {"lat": goal_lat, "lon": goal_lon},
+                    planning_options
+                )
+                
+                if result["status"] == "success" and len(result["coords"]) > 2:
+                    coords = result["coords"]
+                    logger.info(f"Intelligent planner succeeded for short route: {len(coords)} points")
+                else:
+                    raise Exception("No suitable intelligent route found")
+                    
+            except Exception as e:
+                # 如果智能规划器失败，回退到Hybrid A*
+                logger.info(f"Falling back to Hybrid A* for short distance: {e}")
+                config = PlannerConfig(
+                    grid_resolution=50.0,
+                    motion_step=50.0,
+                    max_iterations=50000,
+                    goal_tolerance_xy=50.0
+                )
+                planner = HybridAStar(config, constrained_region)
+                route = planner.plan((sx, sy, 0.0), (gx, gy, None), initial_velocity=12.0)
+                if not route:
+                    raise HTTPException(status_code=400, detail="No route found under constraints")
+
+                coords = []
+                for (x, y) in route.waypoints:
+                    lon = x / m_per_deg_lon
+                    lat = y / m_per_deg_lat
+                    coords.append([lon, lat])
+        
+        t1 = _time.time()
+
+        print(f"DEBUG: 最终返回 {len(coords)} 个坐标")
+        print(f"DEBUG: 最终起点: {coords[0] if coords else 'None'}")
+        print(f"DEBUG: 最终终点: {coords[-1] if coords else 'None'}")
+        
+        return {
+            "coords": coords,
+            "planning_time_s": round(t1 - t0, 3),
+            "used_ais": constrained_region is not region
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8001))
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -2,6 +2,27 @@
 
 所有重要变更都会记录在此文件中。
 
+## [3.3.3] - 2025-01-14
+
+### 🐛 修复 Fixed
+- **路径显示混乱问题**: 修复了新规划路径在地图上显示错误的问题
+- **路径跳回问题**: 解决了点击后路径跳回初始状态的问题
+- **数据同步问题**: 通过订阅模式确保路径数据正确同步
+
+### 🔧 改进 Changed
+- **RouteService 重构**: 实现单例模式统一管理路径数据
+  - 添加 localStorage 持久化（24小时缓存）
+  - 实现订阅模式自动更新组件
+  - 区分用户规划路径和默认路径
+- **组件更新**: 
+  - App.tsx 订阅 RouteService 自动接收路径更新
+  - RoutePlanner 使用 routeService.planRoute()
+  - 移除对固定 getRoute() 函数的依赖
+
+### 🗑️ 移除 Removed
+- 删除冗余测试文件 (test_route_display.html, test_route_service.html)
+- 清理临时文档 (SOLUTION_DELIVERY.md, ISSUES_DIAGNOSIS.md)
+
 ## [3.3.2] - 2025-08-14
 
 ### 🎉 主要更新 Major Updates
@@ -11,12 +32,17 @@
 - HybridAStar动态motion_step配置支持
 - 性能基准测试框架 (tests/bench/)
 - 重构验收测试套件
+  
+### ♻️ 回滚 Revert
+- 回滚"前端集成核心规划服务（🧮 规划(核心)按钮）"，暂不在前端直接对接 `/plan`
+- 保留 `getEncLite` 优先使用后端 `/enc/lite` 的策略（非破坏性）
 
 ### 🔧 改进 Changed
 - **路径粒度优化**: 从100m降至50m，精度提升48%
 - **架构改进**: 替换局部拼接为完整重规划
 - **性能优化**: 单次规划替代双路径对比
 - **代码简化**: 删除_densify_latlon和_stitch_replanned_segments冗余方法
+ - **前端规划体验**: `ui/src/services/routeService.ts` 切换为“基线/动态双跑”模式（先初始化 `/api/route/initialize`，再读取 `/api/route/dynamic` 的 baseline 与 dynamic），并对返回点列做适度降采样，主航迹风格与初始路径保持一致，动态红线清晰对比；评估模块不再出现始终为 0 的情况。
 
 ### 📊 性能指标
 - 路径粒度: 95.9m → 49.9m

@@ -97,6 +97,13 @@ class DynamicRoutePlanner:
         # 更新活跃威胁列表
         current_active = [t.mmsi for t in ais_targets][:10]
         
+        # 调试输出
+        print(f"动态规划器调试: AIS目标数={len(ais_targets)}, 活跃威胁={len(current_active)}")
+        if ais_targets:
+            print(f"  威胁MMSI: {[t.mmsi for t in ais_targets[:5]]}")
+            scenario = getattr(self.ais_manager, 'get_scenario', lambda: 'unknown')()
+            print(f"  当前场景: {scenario}")
+        
         # 获取基础可航区域
         try:
             region = self._get_region()
@@ -104,8 +111,40 @@ class DynamicRoutePlanner:
             region = None
         
         if region is None:
-            # 回退到轻量级逻辑
+            # 轻量级威胁规避逻辑（当没有可航区域时）
+            print(f"进入轻量级逻辑: region=None, current_active={current_active}")
             self.current_dynamic_route.active_threats = current_active
+            
+            # 如果有威胁目标，执行简单的威胁规避
+            if ais_targets:
+                # 获取原始路径
+                original_waypoints = self.current_dynamic_route.original_route
+                if len(original_waypoints) < 2:
+                    return self.current_dynamic_route
+                
+                # 执行轻量级威胁规避
+                avoidance_waypoints = self._lightweight_threat_avoidance(
+                    original_waypoints, ais_targets, current_position
+                )
+                
+                if avoidance_waypoints and len(avoidance_waypoints) > len(original_waypoints):
+                    # 更新路径为避让路径，标记避让点
+                    new_waypoints = []
+                    for i, (lat, lon) in enumerate(avoidance_waypoints):
+                        # 原路径点不是避让点，新增的是避让点
+                        is_avoidance = i >= len(original_waypoints)
+                        waypoint = RouteWaypoint(
+                            lat=lat, 
+                            lon=lon, 
+                            sog=self.own_vessel_speed,
+                            is_avoidance_point=is_avoidance
+                        )
+                        new_waypoints.append(waypoint)
+                    
+                    self.current_dynamic_route.waypoints = new_waypoints
+                    self.current_dynamic_route.last_update = current_time
+                    print(f"轻量级威胁规避: 添加了{len(avoidance_waypoints) - len(original_waypoints)}个避让点")
+            
             return self.current_dynamic_route
         
         # 计算目标点（取原始路径终点）
@@ -116,7 +155,7 @@ class DynamicRoutePlanner:
         if not hasattr(self, '_baseline_route') or time_since_update > 30:
             # 每30秒更新一次基准路径，或首次计算
             baseline_latlon = self._plan_with_region(
-                region, current_position, (goal_lat, goal_lon), motion_step=50.0
+                region, current_position, (goal_lat, goal_lon), motion_step=100.0
             )
             self._baseline_route = baseline_latlon
         else:
@@ -128,16 +167,48 @@ class DynamicRoutePlanner:
         else:
             constrained_region = region
         
-        # 3. 单次完整规划（核心改变）- 使用50m统一粒度
+        # 3. 单次完整规划（核心改变）- 使用100m粒度平衡精度和性能
         dynamic_latlon = self._plan_with_region(
             constrained_region, 
             current_position, 
             (goal_lat, goal_lon),
-            motion_step=50.0  # 统一高精度
+            motion_step=100.0  # 100m精度，平衡精度和计算性能
         )
         
-        # 如果动态规划失败，使用基准路径
-        selected_latlon = dynamic_latlon or baseline_latlon
+        # 如果动态规划失败，尝试轻量级威胁规避
+        if not dynamic_latlon:
+            print(f"完整规划失败，回退到轻量级威胁规避")
+            if ais_targets:
+                # 执行轻量级威胁规避
+                original_waypoints = self.current_dynamic_route.original_route
+                avoidance_waypoints = self._lightweight_threat_avoidance(
+                    original_waypoints, ais_targets, current_position
+                )
+                
+                if avoidance_waypoints and len(avoidance_waypoints) > len(original_waypoints):
+                    # 更新路径为避让路径，标记避让点
+                    new_waypoints = []
+                    for i, (lat, lon) in enumerate(avoidance_waypoints):
+                        is_avoidance = i >= len(original_waypoints)
+                        waypoint = RouteWaypoint(
+                            lat=lat, 
+                            lon=lon, 
+                            sog=self.own_vessel_speed,
+                            is_avoidance_point=is_avoidance
+                        )
+                        new_waypoints.append(waypoint)
+                    
+                    self.current_dynamic_route.waypoints = new_waypoints
+                    self.current_dynamic_route.active_threats = current_active
+                    self.current_dynamic_route.last_update = current_time
+                    print(f"轻量级威胁规避: 添加了{len(avoidance_waypoints) - len(original_waypoints)}个避让点")
+                    return self.current_dynamic_route
+            
+            # 如果轻量级规避也失败，使用基准路径
+            selected_latlon = baseline_latlon
+        else:
+            selected_latlon = dynamic_latlon
+            
         if not selected_latlon:
             return self.current_dynamic_route
         
@@ -329,6 +400,150 @@ class DynamicRoutePlanner:
         
         return avoidance_points
 
+    def _lightweight_threat_avoidance(
+        self, 
+        original_waypoints: List[Tuple[float, float]], 
+        ais_targets: List[AISTarget],
+        current_position: Tuple[float, float]
+    ) -> Optional[List[Tuple[float, float]]]:
+        """轻量级威胁规避 - 在没有可航区域时使用的简化避让算法"""
+        
+        # 评估威胁
+        high_risk_targets = []
+        for target in ais_targets:
+            # 简单的距离检查
+            target_lat, target_lon = target.position
+            
+            # 检查威胁是否在路径附近
+            for i in range(len(original_waypoints) - 1):
+                seg_start = original_waypoints[i]
+                seg_end = original_waypoints[i + 1]
+                
+                # 计算点到线段的距离
+                dist_to_segment = self._point_to_segment_distance(
+                    (target_lat, target_lon), seg_start, seg_end
+                )
+                
+                # 如果威胁在路径5海里范围内，认为是高风险
+                if dist_to_segment < 5.0:  # 5海里
+                    high_risk_targets.append(target)
+                    break
+        
+        if not high_risk_targets:
+            return original_waypoints
+        
+        # 简单的避让策略：在威胁点附近添加绕行点
+        avoidance_waypoints = []
+        
+        for i, waypoint in enumerate(original_waypoints):
+            avoidance_waypoints.append(waypoint)
+            
+            # 检查下一段是否需要避让
+            if i < len(original_waypoints) - 1:
+                next_waypoint = original_waypoints[i + 1]
+                
+                # 检查这一段是否有威胁
+                segment_threats = []
+                for target in high_risk_targets:
+                    dist = self._point_to_segment_distance(
+                        target.position, waypoint, next_waypoint
+                    )
+                    if dist < 3.0:  # 3海里以内认为需要避让
+                        segment_threats.append(target)
+                
+                # 如果有威胁，添加避让点
+                if segment_threats:
+                    # 选择最危险的威胁
+                    main_threat = segment_threats[0]
+                    
+                    # 计算避让点（简单策略：向左或右偏移）
+                    avoidance_point = self._calculate_simple_avoidance_point(
+                        waypoint, next_waypoint, main_threat
+                    )
+                    
+                    if avoidance_point:
+                        avoidance_waypoints.append(avoidance_point)
+        
+        return avoidance_waypoints
+    
+    def _point_to_segment_distance(
+        self, 
+        point: Tuple[float, float], 
+        seg_start: Tuple[float, float], 
+        seg_end: Tuple[float, float]
+    ) -> float:
+        """计算点到线段的距离（海里）"""
+        import math
+        
+        # 转换为简单的直角坐标系
+        lat_avg = (seg_start[0] + seg_end[0]) / 2
+        deg_to_nm_lat = 60.0
+        deg_to_nm_lon = 60.0 * math.cos(math.radians(lat_avg))
+        
+        # 线段向量
+        seg_dx = (seg_end[1] - seg_start[1]) * deg_to_nm_lon
+        seg_dy = (seg_end[0] - seg_start[0]) * deg_to_nm_lat
+        seg_length_sq = seg_dx**2 + seg_dy**2
+        
+        if seg_length_sq == 0:
+            # 线段长度为0，返回点到点的距离
+            dx = (point[1] - seg_start[1]) * deg_to_nm_lon
+            dy = (point[0] - seg_start[0]) * deg_to_nm_lat
+            return math.sqrt(dx**2 + dy**2)
+        
+        # 计算投影参数
+        point_dx = (point[1] - seg_start[1]) * deg_to_nm_lon
+        point_dy = (point[0] - seg_start[0]) * deg_to_nm_lat
+        t = max(0, min(1, (point_dx * seg_dx + point_dy * seg_dy) / seg_length_sq))
+        
+        # 最近点
+        proj_x = seg_dx * t
+        proj_y = seg_dy * t
+        
+        # 距离
+        dist_x = point_dx - proj_x
+        dist_y = point_dy - proj_y
+        return math.sqrt(dist_x**2 + dist_y**2)
+    
+    def _calculate_simple_avoidance_point(
+        self, 
+        seg_start: Tuple[float, float], 
+        seg_end: Tuple[float, float], 
+        threat: AISTarget
+    ) -> Optional[Tuple[float, float]]:
+        """计算简单的避让点"""
+        import math
+        
+        # 计算航向
+        course = self._calculate_course(seg_start, seg_end)
+        
+        # 计算中点
+        mid_lat = (seg_start[0] + seg_end[0]) / 2
+        mid_lon = (seg_start[1] + seg_end[1]) / 2
+        
+        # 根据威胁位置决定左避还是右避
+        threat_bearing = self._calculate_course((mid_lat, mid_lon), threat.position)
+        relative_bearing = (threat_bearing - course + 360) % 360
+        
+        # 如果威胁在右舷，向左避让；如果在左舷，向右避让
+        if relative_bearing > 180:
+            # 威胁在左舷，向右避让
+            avoidance_course = (course + 90) % 360
+        else:
+            # 威胁在右舷，向左避让
+            avoidance_course = (course - 90) % 360
+        
+        # 避让距离：5海里
+        avoidance_distance_nm = 5.0
+        avoidance_distance_deg_lat = avoidance_distance_nm / 60.0
+        avoidance_distance_deg_lon = avoidance_distance_nm / (60.0 * math.cos(math.radians(mid_lat)))
+        
+        # 计算避让点
+        avoidance_lat = mid_lat + avoidance_distance_deg_lat * math.cos(math.radians(avoidance_course))
+        avoidance_lon = mid_lon + avoidance_distance_deg_lon * math.sin(math.radians(avoidance_course))
+        
+        return (avoidance_lat, avoidance_lon)
+
     def _plan_with_region(self, region: FeasibleRegion, start_latlon: Tuple[float, float], 
                          goal_latlon: Tuple[float, float], motion_step: float = 50.0) -> Optional[List[Tuple[float, float]]]:
         """使用Hybrid A*在给定可航区域内规划，返回(lat, lon) 轨迹。
@@ -351,11 +566,12 @@ class DynamicRoutePlanner:
             gy = goal_latlon[0] * m_per_deg_lat
             
             # 使用统一的50m粒度配置
+            # 增加最大迭代次数以处理长距离路径
             config = PlannerConfig(
                 grid_resolution=motion_step,
                 motion_step=motion_step,
-                max_iterations=5000,
-                goal_tolerance_xy=motion_step
+                max_iterations=50000,  # 增加10倍以处理长距离
+                goal_tolerance_xy=motion_step * 2  # 放宽目标容差
             )
             planner = HybridAStar(config, region)
             
